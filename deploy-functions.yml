@@ -1,0 +1,27 @@
+# Deploys the Supabase edge functions whenever you change them on GitHub.
+# Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   SUPABASE_ACCESS_TOKEN  - from supabase.com/dashboard/account/tokens
+#   SUPABASE_PROJECT_REF   - the part of your project URL before .supabase.co
+name: Deploy Supabase functions
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/functions/**", "supabase/config.toml"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy send-invite
+        run: supabase functions deploy send-invite --project-ref "$PROJECT_REF"
+      - name: Deploy sync-games
+        run: supabase functions deploy sync-games --no-verify-jwt --project-ref "$PROJECT_REF"
