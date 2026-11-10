@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Survivor Pools</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏒</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ice:#EEF3F6;--surface:#FFFFFF;--boards:#12263A;--ink:#12263A;--muted:#5B6B7A;
+  --line:#D5DEE5;--red:#D7262E;--blue:#2453A6;--crease:#CFE2F2;--good:#1D7A4A;--chip:#E3EAF0;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --ice:#0E1A26;--surface:#15263A;--boards:#08121C;--ink:#E6EEF4;--muted:#93A6B6;
+  --line:#26394D;--red:#F0474E;--blue:#6E9BEA;--crease:#1C3550;--good:#4CC28A;--chip:#1E3247;color-scheme:dark}}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ice);color:var(--ink);font:16px/1.5 Barlow,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--boards)}
+h1,h2,h3{font-family:"Saira Condensed","Arial Narrow",Arial,sans-serif}
+button{font:inherit;color:inherit}
+a{color:var(--blue)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto}
+
+header{background:var(--boards);color:#fff;padding:18px 18px 0}
+.hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+header h1{margin:0;font-size:2.3rem;line-height:1;font-weight:800}
+header .sub{color:#A9BCCD;margin:6px 0 14px;font-size:.95rem}
+header .acct{flex:none;white-space:nowrap;text-align:right;font-size:.88rem;color:#A9BCCD}
+header .acct button{background:none;border:1px solid #3A5168;color:#fff;border-radius:6px;padding:3px 10px;margin-top:4px;cursor:pointer}
+header .back{color:#A9BCCD;text-decoration:none;font-size:.9rem;display:inline-block;margin-bottom:6px}
+.redline{height:6px;background:var(--red);margin:0 -18px}
+nav{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{flex:1 0 auto;text-align:center;padding:10px 3px 12px;font-size:.76rem;white-space:nowrap;color:#A9BCCD;text-decoration:none;font-weight:600;border-bottom:3px solid transparent}
+nav a[aria-current="page"]{color:#fff;border-color:#fff}
+
+main{padding:18px 18px 48px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px;color:var(--muted)}
+.note strong{color:var(--ink)}
+.warn{border-color:var(--red)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:18px}
+.panel h3{margin:0 0 10px;font-size:1.35rem}
+.field{display:block;margin:0 0 14px}
+.field span{display:block;font-weight:600;font-size:.92rem;margin-bottom:4px}
+.field input,.field select,.row input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--ice);color:var(--ink);font:inherit}
+.check{display:flex;gap:10px;align-items:center;margin:0 0 14px;font-weight:600;font-size:.92rem}
+.check input{width:20px;height:20px;flex:none;margin-top:2px}
+.row{display:flex;gap:8px}
+.row input{flex:1;min-width:0}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.wide{width:100%}
+.links{display:flex;justify-content:space-between;margin-top:14px;font-size:.92rem}
+.links button{background:none;border:0;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline}
+.err{color:var(--red);font-size:.92rem;margin:0 0 10px}
+.ok{color:var(--good);font-size:.92rem;margin:0 0 10px}
+
+.poolcard{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;text-decoration:none;color:var(--ink)}
+.poolcard strong{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.4rem;font-weight:700;display:block;line-height:1.1}
+.poolcard small{color:var(--muted)}
+.badge{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted);white-space:nowrap}
+
+.me{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.me .who{font-weight:600}
+.me .used{color:var(--muted);font-size:.9rem}
+.pucks{display:flex;gap:6px}
+.puck{width:22px;height:22px;border-radius:50%;background:var(--ink);box-shadow:inset 0 -4px 0 rgba(255,255,255,.18)}
+.puck.lost{background:transparent;border:2px dashed var(--line);box-shadow:none}
+td .puck,.prow .puck{width:14px;height:14px}
+
+.weekbar{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+.weekbar h2{margin:0;font-size:1.6rem;font-weight:700}
+.weekbar button{background:none;border:1px solid var(--line);border-radius:8px;width:40px;height:40px;cursor:pointer}
+.weekbar button:disabled{opacity:.35;cursor:default}
+.meta{color:var(--muted);font-size:.88rem;margin:-6px 0 14px}
+
+.game{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.game .top{display:flex;justify-content:space-between;padding:10px 14px 0;color:var(--muted);font-size:.85rem}
+.sides{display:grid;grid-template-columns:1fr 1fr}
+.side{background:none;border:0;padding:10px 14px 12px;text-align:left;cursor:pointer}
+.side.home{text-align:right}
+.side:disabled{cursor:default}
+.side .abbr{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:2rem;font-weight:800;line-height:1;display:block}
+.side .name{font-size:.85rem;color:var(--muted);display:block}
+.side .pct{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.25rem;font-weight:700}
+.side .tag{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;margin-top:6px;background:var(--chip);color:var(--muted)}
+.side.picked{background:var(--crease);box-shadow:inset 0 0 0 3px var(--blue)}
+.side.picked .tag{background:var(--blue);color:#fff}
+.game.has-pick .side:not(.picked){opacity:.5}
+.game.has-pick{border-color:var(--blue)}
+.mypick{display:flex;align-items:center;gap:12px;background:var(--surface);border:2px solid var(--blue);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.mypick .lbl{font-size:.8rem;font-weight:600;color:var(--blue);text-transform:none}
+.mypick strong{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.45rem;line-height:1.1;display:block}
+.mypick small{color:var(--muted)}
+.mypick.none{border-style:dashed;border-color:var(--line)}
+.mypick.none .lbl{color:var(--muted)}
+.matchup{border-top:1px solid var(--line)}
+.matchup summary{cursor:pointer;list-style:none;padding:10px 14px;font-size:.88rem;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.matchup summary::-webkit-details-marker{display:none}
+.matchup summary b{color:var(--ink);font-weight:600}
+.matchup summary::after{content:"Show ▾";color:var(--blue);font-weight:600;white-space:nowrap}
+.matchup[open] summary::after{content:"Hide ▴"}
+.mtable{width:100%;border:0;border-radius:0;background:none;font-size:.88rem}
+.mtable th,.mtable td{padding:6px 14px;border-bottom:1px solid var(--line);text-align:center}
+.mtable td:first-child,.mtable th:first-child{text-align:left;color:var(--muted);font-weight:500}
+.mtable .better{font-weight:700;color:var(--good)}
+.edge{padding:10px 14px 12px;font-size:.9rem}
+.potw{display:flex;align-items:center;gap:12px}
+.potw strong{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.4rem;line-height:1.1;display:block}
+.potw small{color:var(--muted);display:block}
+.potw+.potw{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+
+.pkrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.pkrow:first-of-type{border-top:0;padding-top:0}
+.pkrow .who{flex:1;min-width:0}
+.pkrow .who strong{display:block}
+.pkrow .who small{color:var(--muted)}
+.pkrow .pk{display:flex;align-items:center;gap:8px;justify-content:flex-end;text-align:right}
+.pkrow .pk small{display:block;color:var(--muted)}
+.pkrow .pk strong{display:block}
+.res{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted)}
+.res.w{background:var(--good);color:#fff}.res.l{background:var(--red);color:#fff}
+.popular{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.popular span{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:99px;padding:3px 10px 3px 4px;font-weight:600;font-size:.88rem}
+.popular .logo{width:22px;height:22px}
+.friendly{display:inline-flex;align-items:center;gap:6px;background:#F5C542;color:#12263A;font-weight:700;font-size:.82rem;padding:3px 10px;border-radius:99px;margin:-6px 0 14px}
+.badge.friendly-b{background:#F5C542;color:#12263A}
+.winner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#F5C542,#E9A920);color:#12263A;border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.winner .cup{font-size:2.2rem;line-height:1}
+.winner strong{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.5rem;line-height:1.1;display:block}
+.winner small{display:block;font-weight:600;opacity:.85}
+.rulesdrop{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.rulesdrop summary{cursor:pointer;list-style:none;padding:12px 16px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.rulesdrop summary::-webkit-details-marker{display:none}
+.rulesdrop summary::after{content:"Show ▾";color:var(--blue);font-size:.88rem}
+.rulesdrop[open] summary::after{content:"Hide ▴"}
+.rulesdrop[open] summary{border-bottom:1px solid var(--line)}
+.rulesbody{padding:14px 16px 4px}
+.rulesbody .panel{border:0;padding:0;margin-bottom:16px;background:none}
+.rulestext{white-space:pre-wrap;margin:0;line-height:1.55}
+.ruleslist{margin:0;padding-left:20px}
+.ruleslist li{margin:6px 0}
+textarea.rules{width:100%;min-height:180px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--ice);color:var(--ink);font:inherit;resize:vertical}
+.xlink{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;margin-top:8px;background:var(--ice)}
+.xlink small{display:block;color:var(--muted);font-weight:400}
+.side.used .abbr,.side.used .pct,.side.used .logo{opacity:.35}
+.side{display:flex;align-items:center;gap:12px}
+.side.home{flex-direction:row-reverse}
+.side .info{min-width:0;flex:1}
+.logo{width:48px;height:48px;flex:none;display:block}
+.logo img{width:100%;height:100%;object-fit:contain;display:block}
+img.logo{object-fit:contain}
+.logo.logo-sm{width:32px;height:32px}
+.pickrow{display:flex;align-items:center;gap:10px}
+.side.won .tag{background:var(--good);color:#fff}
+.side.lost .tag{background:var(--red);color:#fff}
+.bar{display:flex;height:10px;position:relative}
+.bar span{display:block;height:100%}
+.bar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--red);transform:translateX(-1px)}
+.score{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:700;font-size:1.1rem;color:var(--ink)}
+
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:600;color:var(--muted);font-size:.85rem}
+tr:last-child td{border-bottom:0}
+tr.out td{opacity:.5}
+.tablewrap{overflow-x:auto}
+.hist{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.hist span{font-size:.72rem;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--chip)}
+.hist .w{background:var(--good);color:#fff}
+.hist .l{background:var(--red);color:#fff}
+
+.prow{border-top:1px solid var(--line);padding:12px 0}
+.prow:first-of-type{border-top:0;padding-top:0}
+.prow .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.prow .detail{color:var(--muted);font-size:.85rem;margin:2px 0 8px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.sm{border:1px solid var(--line);background:var(--ice);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:.88rem;font-weight:600}
+.sm.danger{color:var(--red)}
+.sm:disabled{opacity:.4;cursor:default}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--boards);color:#fff;padding:10px 16px;border-radius:8px;font-size:.92rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;z-index:20}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap" id="head"></div><div class="redline"></div></header>
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ======== Settings: paste your Supabase project values here ======== */
+const SUPABASE_URL = "https://pqhwctrxhmdrvkkhbzbn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_oesqyjOM4Yxk3L_MTx3FfA_knGhHFpT";
+/* =================================================================== */
+
+const AUTH_TYPE = new URLSearchParams(location.hash.slice(1)).get("type");
+const configured = !SUPABASE_URL.includes("YOUR-") && !SUPABASE_ANON_KEY.includes("YOUR-");
+const sb = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const NHL_TEAMS={ANA:["Anaheim Ducks","#F47A38"],BOS:["Boston Bruins","#FFB81C"],BUF:["Buffalo Sabres","#003087"],CGY:["Calgary Flames","#C8102E"],CAR:["Carolina Hurricanes","#CE1126"],CHI:["Chicago Blackhawks","#CF0A2C"],COL:["Colorado Avalanche","#6F263D"],CBJ:["Columbus Blue Jackets","#002654"],DAL:["Dallas Stars","#006847"],DET:["Detroit Red Wings","#CE1126"],EDM:["Edmonton Oilers","#FF4C00"],FLA:["Florida Panthers","#C8102E"],LAK:["Los Angeles Kings","#8A8D8F"],MIN:["Minnesota Wild","#154734"],MTL:["Montreal Canadiens","#AF1E2D"],NSH:["Nashville Predators","#FFB81C"],NJD:["New Jersey Devils","#CE1126"],NYI:["New York Islanders","#00539B"],NYR:["New York Rangers","#0038A8"],OTT:["Ottawa Senators","#C52032"],PHI:["Philadelphia Flyers","#F74902"],PIT:["Pittsburgh Penguins","#FCB514"],SJS:["San Jose Sharks","#006D75"],SEA:["Seattle Kraken","#68A2B9"],STL:["St. Louis Blues","#002F87"],TBL:["Tampa Bay Lightning","#002868"],TOR:["Toronto Maple Leafs","#00205B"],UTA:["Utah Mammoth","#71AFE5"],VAN:["Vancouver Canucks","#00843D"],VGK:["Vegas Golden Knights","#B4975A"],WSH:["Washington Capitals","#C8102E"],WPG:["Winnipeg Jets","#041E42"]};
+const NFL_TEAMS={ARI:["Arizona Cardinals","#97233F"],ATL:["Atlanta Falcons","#A71930"],BAL:["Baltimore Ravens","#241773"],BUF:["Buffalo Bills","#00338D"],CAR:["Carolina Panthers","#0085CA"],CHI:["Chicago Bears","#0B162A"],CIN:["Cincinnati Bengals","#FB4F14"],CLE:["Cleveland Browns","#FF3C00"],DAL:["Dallas Cowboys","#003594"],DEN:["Denver Broncos","#FB4F14"],DET:["Detroit Lions","#0076B6"],GB:["Green Bay Packers","#203731"],HOU:["Houston Texans","#03202F"],IND:["Indianapolis Colts","#002C5F"],JAX:["Jacksonville Jaguars","#006778"],KC:["Kansas City Chiefs","#E31837"],LV:["Las Vegas Raiders","#A5ACAF"],LAC:["Los Angeles Chargers","#0080C6"],LAR:["Los Angeles Rams","#003594"],MIA:["Miami Dolphins","#008E97"],MIN:["Minnesota Vikings","#4F2683"],NE:["New England Patriots","#002244"],NO:["New Orleans Saints","#D3BC8D"],NYG:["New York Giants","#0B2265"],NYJ:["New York Jets","#125740"],PHI:["Philadelphia Eagles","#004C54"],PIT:["Pittsburgh Steelers","#FFB612"],SF:["San Francisco 49ers","#AA0000"],SEA:["Seattle Seahawks","#69BE28"],TB:["Tampa Bay Buccaneers","#D50A0A"],TEN:["Tennessee Titans","#4B92DB"],WSH:["Washington Commanders","#5A1414"]};
+const SPORTS={
+  nhl:{label:"NHL",teams:NHL_TEAMS,tab:"This Saturday",slate:"Saturday",blurb:"NHL Saturdays"},
+  nfl:{label:"NFL",teams:NFL_TEAMS,tab:"This Week",slate:"week",blurb:"NFL weekly"}
+};
+const sportOf=()=>SPORTS[(S.pool&&S.pool.sport)||"nhl"];
+const teamName=a=>(sportOf().teams[a]||[a])[0];
+const teamColor=a=>(sportOf().teams[a]||[0,"#5B6B7A"])[1];
+// Official logos: NHL from the league's own asset server, NFL from ESPN's.
+function teamLogo(team,small){
+  const sport=(S.pool&&S.pool.sport)||"nhl", cls="logo"+(small?" logo-sm":"");
+  if(sport==="nfl")return el("img",{class:cls,src:`https://a.espncdn.com/i/teamlogos/nfl/500/${team.toLowerCase()}.png`,alt:"",loading:"lazy",onerror:e=>e.target.remove()});
+  const base=`https://assets.nhle.com/logos/nhl/svg/${team}`;
+  return el("picture",{class:cls},
+    el("source",{srcset:`${base}_dark.svg`,media:"(prefers-color-scheme: dark)"}),
+    el("img",{src:`${base}_light.svg`,alt:"",loading:"lazy",onerror:e=>e.target.closest("picture").remove()}));
+}
+
+const S={session:null,needsPassword:AUTH_TYPE==="invite"||AUTH_TYPE==="recovery",authMode:"signin",authMsg:null,
+  pools:[],invites:[],pool:null,games:[],myPicks:[],standings:[],allPicks:[],pending:[],weekIdx:-1,loadedPool:null,team:""};
+
+const $=id=>document.getElementById(id);
+const el=(tag,attrs={},...kids)=>{const n=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")n.className=v;else if(k==="text")n.textContent=v;else if(k.startsWith("on"))n.addEventListener(k.slice(2),v);else if(v===true)n.setAttribute(k,"");else if(v!==false&&v!=null)n.setAttribute(k,v)}for(const c of kids)if(c!=null)n.append(c);return n};
+let toastT;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),3000)}
+const errText=e=>(e&&(e.message||e.error_description))||"Something went wrong. Try again.";
+const uid=()=>S.session&&S.session.user.id;
+
+const started=g=>g.status!=="scheduled"||Date.parse(g.start_time)<=Date.now();
+const gamesOn=d=>S.games.filter(g=>g.game_date===d);
+// A pick always locks at its own kickoff, plus the pool's deadline for the whole week.
+const etDay=iso=>new Date(iso).toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+const etOnePm=d=>{for(const off of ["-05:00","-04:00"]){const t=Date.parse(`${d}T13:00:00${off}`);if(new Date(t).toLocaleTimeString("en-US",{timeZone:"America/New_York",hour:"numeric",hour12:false})==="13")return t}return Date.parse(`${d}T18:00:00Z`)};
+const locked=(d,g)=>{
+  if(started(g))return true;
+  const m=S.pool.lock_mode;
+  if(m==="first")return gamesOn(d).some(started);
+  if(m==="sunday_first")return gamesOn(d).filter(x=>etDay(x.start_time)===d).some(started);
+  if(m==="sunday_1pm")return Date.now()>=etOnePm(d);
+  return false;
+};
+const LOCK_TEXT={
+  game:"Picks lock when your game starts.",
+  first:{nhl:"All picks lock at the first puck drop.",nfl:"All picks lock at the first kickoff of the week."},
+  sunday_first:"Picks are due before the first Sunday kickoff. Teams that already played can’t be picked.",
+  sunday_1pm:"Picks are due Sunday at 1:00 p.m. Eastern. Teams that already played can’t be picked."
+};
+const revealText=()=>({
+  game:"Each pick is revealed when its game starts.",
+  first:S.pool&&S.pool.sport==="nfl"?"Everyone’s picks are revealed at the first kickoff of the week.":"Everyone’s picks are revealed at the first puck drop.",
+  sunday_first:"Everyone’s picks are revealed at the first Sunday kickoff.",
+  sunday_1pm:"Everyone’s picks are revealed Sunday at 1:00 p.m. Eastern."
+}[S.pool.lock_mode]||"Each pick is revealed when its game starts.");
+const lockText=()=>{const t=LOCK_TEXT[S.pool.lock_mode]||LOCK_TEXT.game;return typeof t==="string"?t:t[S.pool.sport||"nhl"]};
+const fmtTime=iso=>new Date(iso).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+const fmtDate=d=>new Date(d+"T12:00:00").toLocaleDateString([], {weekday:"long",month:"long",day:"numeric"});
+const shortDate=d=>new Date(d+"T12:00:00").toLocaleDateString([], {month:"short",day:"numeric"});
+const gameFor=(d,t)=>gamesOn(d).find(g=>g.away===t||g.home===t);
+const weekDone=d=>{const gs=gamesOn(d);return gs.length>0&&gs.every(g=>g.status==="final"||g.status==="postponed")};
+const resultOf=(d,t)=>{const g=gameFor(d,t);return g&&g.status==="final"&&g.winner?(g.winner===t?"w":"l"):"p"};
+// Result of a saved pick, using the exact game it was made on (games can move weeks).
+const pickGame=pk=>pk&&pk.game_id!=null?S.games.find(x=>String(x.id)===String(pk.game_id)):null;
+const pickResult=pk=>{const g=pickGame(pk);if(!g)return"p";if(g.status==="postponed"||g.game_date!==pk.game_date)return"pp";
+  return g.status==="final"&&g.winner?(g.winner===pk.team?"w":"l"):"p"};
+const resLabel=r=>({w:"Won",l:"Lost",pp:"Postponed · no strike",p:"Pending"})[r];
+const resClass=r=>r==="pp"?"w":r==="p"?"":r;
+const pickPct=pk=>{const g=pickGame(pk);if(!g)return null;const v=g.away===pk.team?g.away_pct:g.home_pct;return v==null?null:+v};
+
+function puckRow(left,total){const r=el("div",{class:"pucks","aria-label":`${left} of ${total} lives left`});for(let i=0;i<total;i++)r.append(el("span",{class:"puck"+(i<left?"":" lost")}));return r}
+
+/* ---------- Routing ---------- */
+function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["saturday","picks","standings","commish"].includes(p[2])?p[2]:"mine"};return{view:"home"}}
+
+async function route(){
+  if(!configured)return renderSetupNeeded();
+  if(!S.session)return renderAuth();
+  if(S.needsPassword)return renderSetPassword();
+  const r=parseRoute();
+  if(r.view==="pool"){
+    if(S.loadedPool!==r.id){renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Loading pool…"}));await loadPool(r.id)}
+    if(!S.pool){location.hash="#home";return}
+    renderPool(r.tab);
+  }else{
+    S.loadedPool=null;S.pool=null;
+    renderHeader(null);
+    await loadHome();renderHome();
+  }
+}
+addEventListener("hashchange",route);
+
+/* ---------- Header ---------- */
+function renderHeader(tabs){
+  const h=$("head");h.replaceChildren();
+  const left=el("div",{});
+  if(S.pool&&tabs)left.append(el("a",{class:"back",href:"#home",text:"‹ My pools"}));
+  left.append(el("h1",{text:S.pool&&tabs?S.pool.name:"Survivor Pools"}));
+  left.append(el("p",{class:"sub",text:S.pool&&tabs?`${sportOf().blurb} · ${S.pool.lives} ${S.pool.lives===1?"life":"lives"} · each team ${S.pool.max_picks_per_team===2?"twice":"once"}`:"NHL and NFL survivor pools"}));
+  if(S.pool&&tabs&&S.pool.friendly)left.append(el("div",{class:"friendly",text:"🏆 Playing for bragging rights"}));
+  const row=el("div",{class:"hrow"},left);
+  if(S.session){
+    const meta=S.session.user.user_metadata||{};
+    row.append(el("div",{class:"acct"},el("div",{text:S.team||meta.display_name||S.session.user.email}),
+      el("button",{text:"Sign out",onclick:async()=>{await sb.auth.signOut();location.hash="#home"}})));
+  }
+  h.append(row);
+  if(tabs){
+    const nav=el("nav",{});
+    for(const [key,label] of tabs)nav.append(el("a",{href:`#pool/${S.pool.id}/${key}`,text:label,"aria-current":parseRoute().tab===key?"page":null}));
+    h.append(nav);
+  }else h.append(el("div",{style:"height:4px"}));
+}
+
+/* ---------- Setup + auth ---------- */
+function renderSetupNeeded(){
+  renderHeader(null);
+  $("app").replaceChildren(el("div",{class:"note warn"},el("strong",{text:"Almost there. "}),"Add your Supabase project URL and anon key at the top of index.html, then reload."));
+}
+
+function renderAuth(){
+  renderHeader(null);
+  const m=S.authMode;const app=$("app");app.replaceChildren();
+  const p=el("div",{class:"panel"});
+  const msg=S.authMsg?el("p",{class:S.authMsg.ok?"ok":"err",text:S.authMsg.text}):"";
+  const field=(label,input,hint)=>el("label",{class:"field"},el("span",{text:label}),input,hint?el("small",{class:"meta",style:"display:block;margin-top:4px",text:hint}):null);
+  const name=el("input",{type:"text",autocomplete:"username",maxlength:"30"});
+  const email=el("input",{type:"email",autocomplete:"email"});
+  const pw=el("input",{type:"password",autocomplete:m==="signup"?"new-password":"current-password",minlength:"8"});
+  const poolName=el("input",{type:"text",maxlength:"60",placeholder:"e.g. Sunday Survivors"});
+  const sport=el("select",{},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
+  const go=(mode)=>{S.authMode=mode;S.authMsg=null;renderAuth()};
+  const btn=el("button",{class:"btn wide"});
+  const busy=async fn=>{btn.disabled=true;try{await fn()}catch(e){S.authMsg={text:errText(e)};renderAuth()}btn.disabled=false};
+  const redirect=location.origin+location.pathname;
+  if(m==="signin"){
+    p.append(el("h3",{text:"Sign in"}),msg,field("Email",email),field("Password",pw),btn);
+    btn.textContent="Sign in";
+    btn.onclick=()=>busy(async()=>{
+      if(!email.value.trim()||!pw.value)throw{message:"Enter your email and password."};
+      const{error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});
+      if(error)throw{message:/confirm/i.test(error.message)?"Confirm your email first, then sign in.":"That email and password don’t match."};
+    });
+    p.append(el("div",{class:"links"},el("button",{text:"Forgot password?",onclick:()=>go("forgot")})));
+    app.append(p);
+    app.append(el("div",{class:"panel"},el("h3",{text:"New here?"}),
+      el("p",{style:"margin:0 0 10px",text:"Joining a friend’s pool? Use the invite link your commissioner emailed you. It sets up your account."}),
+      el("p",{style:"margin:0 0 14px",text:"Want to run your own pool?"}),
+      el("button",{class:"btn wide",style:"background:var(--boards)",text:"Create a commissioner account",onclick:()=>go("signup")})));
+    return;
+  }else if(m==="signup"){
+    p.append(el("h3",{text:"Create a commissioner account"}),
+      el("p",{class:"meta",style:"margin:0 0 14px",text:"You’ll set up your pool and invite your players by email. Players don’t need this screen. They join from their invite."}),
+      msg,
+      field("Team name",name,"What everyone in your pools sees"),
+      field("Email",email,"You’ll sign in with this"),
+      field("Password (8+ characters)",pw),
+      field("Survivor pool name",poolName),
+      field("Sport",sport),btn);
+    btn.textContent="Create account and pool";
+    btn.onclick=()=>busy(async()=>{
+      const team=name.value.trim(),pool=poolName.value.trim();
+      if(team.length<2||team.length>30)throw{message:"Team names need 2 to 30 characters."};
+      if(team.includes("@"))throw{message:"Team names can’t include @."};
+      if(!email.value.trim())throw{message:"Enter your email."};
+      if(pw.value.length<8)throw{message:"Use at least 8 characters for your password."};
+      if(!pool)throw{message:"Give your survivor pool a name."};
+      const{data:free}=await sb.rpc("team_name_available",{p_name:team});
+      if(free===false)throw{message:"That team name is taken. Try another."};
+      const{data,error}=await sb.auth.signUp({email:email.value.trim(),password:pw.value,
+        options:{data:{display_name:team,pending_pool:{name:pool,sport:sport.value}},emailRedirectTo:redirect}});
+      if(error)throw error;
+      if(!data.session){S.authMode="signin";S.authMsg={ok:true,text:"Check your email to confirm your account, then sign in. Your pool will be ready."};renderAuth()}
+    });
+    p.append(el("div",{class:"links"},el("button",{text:"I already have an account",onclick:()=>go("signin")})));
+  }else{
+    p.append(el("h3",{text:"Reset your password"}),msg,field("Email",email),btn);
+    btn.textContent="Send reset link";
+    btn.onclick=()=>busy(async()=>{const{error}=await sb.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:redirect});if(error)throw error;S.authMsg={ok:true,text:"If that email has an account, a reset link is on its way."};renderAuth()});
+    p.append(el("div",{class:"links"},el("button",{text:"Back to sign in",onclick:()=>go("signin")})));
+  }
+  app.append(p);
+}
+
+function renderSetPassword(){
+  renderHeader(null);
+  const invited=AUTH_TYPE==="invite";
+  const meta=S.session.user.user_metadata||{};
+  const name=el("input",{type:"text",maxlength:"30",autocomplete:"username",value:""});
+  const pw=el("input",{type:"password",autocomplete:"new-password",minlength:"8"});
+  const btn=el("button",{class:"btn wide",text:"Save password"});
+  const msg=el("p",{class:"err",hidden:true});
+  btn.onclick=async()=>{
+    msg.hidden=true;
+    const team=name.value.trim();
+    if(invited&&(team.length<2||team.includes("@"))){msg.textContent="Choose a team name (2 to 30 characters, no @).";msg.hidden=false;return}
+    if(pw.value.length<8){msg.textContent="Use at least 8 characters for your password.";msg.hidden=false;return}
+    btn.disabled=true;
+    if(invited){const{error:te}=await sb.rpc("set_team_name",{p_name:team});if(te){msg.textContent=errText(te);msg.hidden=false;btn.disabled=false;return}}
+    const{error}=await sb.auth.updateUser({password:pw.value,data:invited?{display_name:team}:undefined});
+    if(error){msg.textContent=errText(error);msg.hidden=false;btn.disabled=false;return}
+    if(invited)S.team=team;
+    S.needsPassword=false;toast("Password saved");location.hash="#home";route();
+  };
+  $("app").replaceChildren(el("div",{class:"panel"},
+    el("h3",{text:invited?"Welcome! Set up your account":"Choose a new password"}),
+    invited?el("p",{class:"meta",style:"margin:0 0 14px",text:`Signed in as ${S.session.user.email}. Pick a password so you can sign in next time.`}):null,
+    msg,
+    invited?el("label",{class:"field"},el("span",{text:"Team name (you’ll sign in with this)"}),name):null,
+    el("label",{class:"field"},el("span",{text:"Password (8+ characters)"}),pw),btn));
+}
+
+/* ---------- Home ---------- */
+async function loadHome(){
+  const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,commissioner_id,lives,max_picks_per_team").order("created_at"),
+    sb.from("profiles").select("display_name").eq("id",uid()).maybeSingle()]);
+  S.invites=inv.data||[];S.pools=pools.data||[];
+  const pend=(S.session.user.user_metadata||{}).pending_pool;
+  if(pend&&pend.name){
+    await sb.auth.updateUser({data:{pending_pool:null}});
+    if(!S.pools.some(p=>p.commissioner_id===uid())){
+      const{data:id,error}=await sb.rpc("create_pool",{p_name:pend.name,p_sport:pend.sport||"nhl"});
+      if(!error&&id){toast("Your pool is ready. Invite your players next.");location.hash=`#pool/${id}/commish`;return}
+    }
+  }
+  if(me.data&&me.data.display_name&&me.data.display_name!==S.team){S.team=me.data.display_name;renderHeader(null)}
+}
+
+function renderHome(){
+  const app=$("app");app.replaceChildren();
+  for(const i of S.invites){
+    const accept=el("button",{class:"btn",text:"Join"});
+    const decline=el("button",{class:"sm",text:"Decline"});
+    accept.onclick=async()=>{accept.disabled=true;const{data,error}=await sb.rpc("accept_invite",{p_invite:i.id});if(error){toast(errText(error));accept.disabled=false;return}toast(`You joined ${i.pool_name}`);location.hash=`#pool/${data}/mine`};
+    decline.onclick=async()=>{await sb.from("invites").delete().eq("id",i.id);await loadHome();renderHome()};
+    app.append(el("div",{class:"panel"},el("h3",{text:i.pool_name}),
+      el("p",{class:"meta",style:"margin:0 0 12px",text:`${i.invited_by_name||"The commissioner"} invited you to join this pool.`}),
+      el("div",{class:"acts"},accept,decline)));
+  }
+  app.append(el("h2",{style:"margin:4px 0 12px;font-size:1.6rem",text:"Your pools"}));
+  if(!S.pools.length)app.append(el("div",{class:"note",text:"You’re not in any pools yet. Create one below, or ask a commissioner to invite your email."}));
+  for(const p of S.pools){
+    app.append(el("a",{class:"poolcard",href:`#pool/${p.id}/mine`},
+      el("div",{},el("strong",{text:p.name}),el("small",{text:`${SPORTS[p.sport||"nhl"].blurb} · ${p.lives} ${p.lives===1?"life":"lives"} · each team ${p.max_picks_per_team===2?"twice":"once"}`})),
+      el("div",{class:"acts",style:"justify-content:flex-end"},el("span",{class:"badge",text:SPORTS[p.sport||"nhl"].label}),
+        p.friendly?el("span",{class:"badge friendly-b",text:"🏆 Friendly"}):null,
+        p.commissioner_id===uid()?el("span",{class:"badge",text:"Commissioner"}):null)));
+  }
+  const name=el("input",{type:"text",placeholder:"e.g. Sunday Survivors",maxlength:"60","aria-label":"Survivor pool name"});
+  const sport=el("select",{"aria-label":"Sport"},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
+  const btn=el("button",{class:"btn",text:"Create pool"});
+  btn.onclick=async()=>{const n=name.value.trim();if(!n)return name.focus();btn.disabled=true;
+    const{data,error}=await sb.rpc("create_pool",{p_name:n,p_sport:sport.value});
+    if(error){toast(errText(error));btn.disabled=false;return}
+    toast("Pool created. Invite your players next.");location.hash=`#pool/${data}/commish`};
+  app.append(el("div",{class:"panel",style:"margin-top:18px"},el("h3",{text:"Start a new pool"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"You’ll be the commissioner. You can change the rules and invite people by email."}),
+    el("label",{class:"field"},el("span",{text:"Sport"}),sport),
+    el("label",{class:"field"},el("span",{text:"Survivor pool name"}),el("div",{class:"row"},name,btn))));
+  const tn=el("input",{type:"text",maxlength:"30",value:S.team,"aria-label":"Team name"});
+  const tb=el("button",{class:"sm",text:"Save"});
+  tb.onclick=async()=>{const t=tn.value.trim();if(!t||t===S.team)return;if(t.includes("@"))return toast("Team names can’t include @.");tb.disabled=true;
+    const{error}=await sb.rpc("set_team_name",{p_name:t});tb.disabled=false;
+    if(error)return toast(errText(error));S.team=t;await sb.auth.updateUser({data:{display_name:t}});renderHeader(null);toast("Team name saved")};
+  app.append(el("div",{class:"panel"},el("h3",{text:"Your team name"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"This is what other players see, and what you sign in with."}),
+    el("div",{class:"row"},tn,tb)));
+}
+
+/* ---------- Pool data ---------- */
+async function loadPool(id,quiet){
+  const{data:pool,error}=await sb.from("pools").select("*").eq("id",id).maybeSingle();
+  if(error||!pool){S.pool=null;S.loadedPool=null;if(!quiet)toast("You don’t have access to that pool.");return}
+  const isC=pool.commissioner_id===uid();
+  const [games,mine,st,all,pend,ts]=await Promise.all([
+    sb.from("games").select("*").eq("sport",pool.sport||"nhl").gte("game_date",pool.start_date).order("game_date").order("start_time"),
+    sb.from("picks").select("game_date,team,game_id").eq("pool_id",id).eq("user_id",uid()),
+    sb.rpc("pool_standings",{p:id}),
+    sb.rpc("pool_picks",{p:id}),
+    isC?sb.from("invites").select("id,email,created_at").eq("pool_id",id).is("accepted_at",null).order("created_at"):Promise.resolve({data:[]}),
+    sb.from("team_stats").select("*").eq("sport",pool.sport||"nhl")
+  ]);
+  const sameWeek=S.loadedPool===id;
+  S.pool=pool;S.games=games.data||[];S.myPicks=mine.data||[];S.standings=st.data||[];S.allPicks=all.data||[];S.pending=pend.data||[];
+  S.stats={};for(const t of ts.data||[])S.stats[t.team]=t;
+  const weeks=weekList();
+  if(!sameWeek||S.weekIdx<0||S.weekIdx>=weeks.length){const i=weeks.findIndex(d=>!weekDone(d));S.weekIdx=i===-1?weeks.length-1:i}
+  S.loadedPool=id;
+}
+const slateTitle=d=>{if(S.pool&&S.pool.sport==="nfl"){const g=S.games.find(x=>x.game_date===d);return `${(g&&g.week_label)||"Week"} · ${shortDate(d)}`}return fmtDate(d)};
+const weekList=()=>[...new Set(S.games.map(g=>g.game_date))].filter(d=>!S.pool||!S.pool.end_date||d<=S.pool.end_date).sort();
+const isCommish=()=>S.pool&&S.pool.commissioner_id===uid();
+async function refresh(){if(S.pool){await loadPool(S.pool.id,true);if(S.pool)renderPool(parseRoute().tab)}}
+
+/* ---------- Pool views ---------- */
+function renderPool(tab){
+  const tabs=[["mine","Your Picks"],["picks","All Picks"],["standings","Standings"],["saturday",sportOf().tab]];
+  if(isCommish())tabs.push(["commish","Commish"]);
+  if(tab==="commish"&&!isCommish())tab="mine";
+  renderHeader(tabs);
+  const app=$("app");app.replaceChildren();
+  // Pool rules: a drop-down at the top of every pool page
+  const box=el("div",{class:"rulesbody"});renderRules(box);
+  const drop=el("details",{class:"rulesdrop"},el("summary",{},el("span",{text:"📋 Pool rules"})),box);
+  if(S.rulesOpen)drop.open=true;
+  drop.addEventListener("toggle",()=>{S.rulesOpen=drop.open});
+  app.append(drop);
+  if(tab==="standings")renderStandings(app);
+  else if(tab==="picks")renderAllPicks(app);
+  else if(tab==="mine")renderMine(app);
+  else if(tab==="commish")renderCommish(app);
+  else if(tab==="saturday")renderSaturday(app);
+  else renderMine(app);
+}
+
+function renderSaturday(v){
+  const me=S.standings.find(r=>r.user_id===uid());
+  const limit=S.pool.max_picks_per_team;
+  const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
+  if(me){
+    v.append(el("div",{class:"me"},
+      el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
+        el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${Object.keys(counts).length} team${Object.keys(counts).length===1?"":"s"} used · ${me.wins} win${me.wins===1?"":"s"}`})),
+      puckRow(me.lives_left,S.pool.lives)));
+  }
+  const weeks=weekList();
+  if(!weeks.length){
+    v.append(el("div",{class:"note"},el("strong",{text:S.pool.sport==="nfl"?"No NFL games yet. ":"No Saturday games yet. "}),S.pool.sport==="nfl"?"Games load automatically once the NFL schedule syncs. Odds appear during the week.":"Games load automatically once the NHL schedule syncs. Odds appear a few days before puck drop."));
+    renderMyPicks(v,counts,limit);return;
+  }
+  const d=weeks[S.weekIdx];
+  const prev=el("button",{"aria-label":`Previous ${sportOf().slate}`,text:"‹",onclick:()=>{S.weekIdx--;renderPool("saturday")}});prev.disabled=S.weekIdx<=0;
+  const next=el("button",{"aria-label":`Next ${sportOf().slate}`,text:"›",onclick:()=>{S.weekIdx++;renderPool("saturday")}});next.disabled=S.weekIdx>=weeks.length-1;
+  v.append(el("div",{class:"weekbar"},prev,el("h2",{text:slateTitle(d)}),next));
+  const gs=gamesOn(d);
+  const oddsAt=gs.map(g=>g.odds_updated_at).filter(Boolean).sort().pop();
+  v.append(el("p",{class:"meta",text:(oddsAt?`Odds updated ${new Date(oddsAt).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})}. `:"")+lockText()}));
+
+  const myPickRow=S.myPicks.find(p=>p.game_date===d);
+  const myPick=myPickRow&&myPickRow.team;
+  const myGame=myPickRow?pickGame(myPickRow)||gameFor(d,myPick):null;
+  const myRes=myPickRow?pickResult(myPickRow):null;
+  const canRepick=myRes==="pp"&&S.pool.postponed_rule==="repick";
+  const pickLocked=myGame&&!canRepick&&locked(d,myGame);
+  const alive=me&&me.lives_left>0;
+
+  renderWinner(v);
+  // Banner: your pick for this week, or a nudge to make one
+  if(me&&myPick){
+    const pg=myGame;const pct=pg?(pg.away===myPick?pg.away_pct:pg.home_pct):null;
+    const res=myRes==="pp"?(canRepick?"Your game was postponed. Pick another team below.":"Your game was postponed. It counts as a win."):pg&&pg.status==="final"&&pg.winner?(pg.winner===myPick?"Won ✓":"Lost"):pickLocked?"Locked in":"You can change it until it locks";
+    v.append(el("div",{class:"mypick"},teamLogo(myPick),
+      el("div",{},el("div",{class:"lbl",text:"✓ Your pick"}),el("strong",{text:teamName(myPick)}),
+        el("small",{text:`${pct!=null?`${Math.round(pct)}% to win · `:""}${res}`}))));
+  }else if(me&&alive&&gs.some(g=>!locked(d,g))){
+    v.append(el("div",{class:"mypick none"},el("div",{},el("div",{class:"lbl",text:"No pick yet"}),
+      el("small",{text:"Tap a team below to make your pick."}))));
+  }
+
+  if(me&&alive)renderPickOfWeek(v,d,counts,limit,myPick);
+
+  for(const g of gs){
+    const card=el("div",{class:"game"+(myPick&&(g.away===myPick||g.home===myPick)?" has-pick":"")});
+    const right=g.status==="postponed"?el("span",{class:"score",text:"Postponed"}):g.status==="final"?el("span",{class:"score",text:`Final ${g.away_score}–${g.home_score}${g.winner==="TIE"?" · tie":""}`}):g.status==="live"?el("span",{class:"score",text:`Live ${g.away_score??0}–${g.home_score??0}`}):el("span",{text:S.pool.sport==="nfl"?new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}):fmtTime(g.start_time)});
+    card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
+    const sides=el("div",{class:"sides"});
+    for(const [team,pct,cls] of [[g.away,g.away_pct,"away"],[g.home,g.home_pct,"home"]]){
+      const isPick=myPick===team;
+      const used=(counts[team]||0)-(isPick?1:0);
+      const maxed=used>=limit;
+      const res=isPick&&g.status==="final"&&g.winner?(g.winner===team?" won":" lost"):"";
+      let tag=null;
+      if(isPick)tag=res===" won"?"✓ Your pick · won":res===" lost"?"✓ Your pick · lost":"✓ Your pick";
+      else if(maxed)tag=limit===2?"Used twice":"Used";
+      else if(used>0)tag="Used once · 1 left";
+      const canTap=alive&&g.status!=="postponed"&&(canRepick?!started(g)&&!isPick:!locked(d,g))&&!pickLocked&&(isPick||!maxed);
+      const b=el("button",{class:`side ${cls}${isPick?" picked":""}${maxed&&!isPick?" used":""}${res}`,"aria-pressed":isPick?"true":"false",
+        "aria-label":`${teamName(team)}${pct!=null?`, ${pct}% to win`:""}${isPick?", your pick":""}${maxed&&!isPick?", already used":""}`},
+        teamLogo(team),
+        el("div",{class:"info"},
+          el("span",{class:"abbr",text:team}),el("span",{class:"name",text:teamName(team)}),
+          el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% to win`:"Odds soon"}),
+          tag?el("div",{},el("span",{class:"tag",text:tag})):null));
+      b.disabled=!canTap;
+      if(canTap)b.onclick=async()=>{
+        b.disabled=true;
+        const{error}=await sb.rpc("make_pick",{p:S.pool.id,g_date:d,p_team:isPick?null:team});
+        if(error){toast(errText(error));b.disabled=false;return}
+        toast(isPick?"Pick cleared":`Picked ${teamName(team)}`);refresh();
+      };
+      sides.append(b);
+    }
+    card.append(sides);
+    if(g.away_pct!=null&&g.home_pct!=null){
+      const t=(+g.away_pct)+(+g.home_pct)||100;
+      card.append(el("div",{class:"bar","aria-hidden":"true"},
+        el("span",{style:`width:${g.away_pct/t*100}%;background:${teamColor(g.away)}`}),
+        el("span",{style:`width:${g.home_pct/t*100}%;background:${teamColor(g.home)}`})));
+    }
+    const notes=matchupNotes(g);if(notes)card.append(notes);
+    v.append(card);
+  }
+  renderExperts(v,d);
+  renderMyPicks(v,counts,limit);
+}
+
+/* ---------- Matchup notes, pick of the week, expert links ---------- */
+const recPct=r=>{if(!r)return null;const n=String(r).split("-").map(Number);const tot=n.reduce((a,b)=>a+(b||0),0);return tot?n[0]/tot:null};
+const formPct=t=>{if(!t||!t.form)return null;if(t.form.includes("-"))return recPct(t.form);const w=[...t.form].filter(c=>c==="W").length;return t.form.length?w/t.form.length:null};
+const recText=t=>S.pool.sport==="nfl"?`${t.wins}–${t.losses}${t.otl?`–${t.otl}`:""}`:`${t.wins}–${t.losses}–${t.otl}`;
+const dash=x=>x?String(x).replace(/-/g,"–"):"—";
+function matchupEdge(g){
+  const A=S.stats[g.away],H=S.stats[g.home];if(!A||!H)return null;
+  const nfl=S.pool.sport==="nfl",marginGap=nfl?2:0.3;
+  const f=[
+    [A.pct,H.pct,.05,()=>`better record (${recText(A)})`,()=>`better record (${recText(H)})`],
+    [recPct(A.road),recPct(H.home),.1,()=>`good on the road (${dash(A.road)})`,()=>`strong at home (${dash(H.home)})`],
+    [formPct(A),formPct(H),.15,()=>"hotter lately",()=>"hotter lately"],
+    [(A.pf??0)-(A.pa??0),(H.pf??0)-(H.pa??0),marginGap,()=>"bigger scoring margin",()=>"bigger scoring margin"],
+  ];
+  const ra=[],rh=[];
+  for(const [a,h,gap,ta,th] of f){if(a==null||h==null)continue;if(a-h>gap)ra.push(ta());else if(h-a>gap)rh.push(th())}
+  if(ra.length===rh.length)return{team:null,text:"Even matchup on paper."};
+  const [team,why]=ra.length>rh.length?[g.away,ra]:[g.home,rh];
+  return{team,text:`${why.join(", ")}.`};
+}
+function matchupNotes(g){
+  const A=S.stats[g.away],H=S.stats[g.home];if(!A||!H)return null;
+  const nfl=S.pool.sport==="nfl",e=matchupEdge(g);
+  const num=x=>x==null?"—":(+x).toFixed(nfl?1:2);
+  const row=(label,a,h,cmpA,cmpH)=>{const tr=el("tr",{},el("td",{text:label}));
+    const ca=el("td",{text:a}),ch=el("td",{text:h});
+    if(cmpA!=null&&cmpH!=null&&cmpA!==cmpH)(cmpA>cmpH?ca:ch).classList.add("better");
+    tr.append(ca,ch);return tr};
+  const body=el("tbody",{},
+    row("Record",recText(A),recText(H),A.pct,H.pct),
+    row("Road / home",`${dash(A.road)} road`,`${dash(H.home)} home`,recPct(A.road),recPct(H.home)),
+    nfl?row("Last 5 (newest first)",A.form?[...A.form].join(" "):"—",H.form?[...H.form].join(" "):"—",formPct(A),formPct(H))
+       :row("Last 10",dash(A.form),dash(H.form),formPct(A),formPct(H)),
+    row("Streak",A.streak||"—",H.streak||"—"),
+    row(nfl?"Points scored / game":"Goals for / game",num(A.pf),num(H.pf),+A.pf,+H.pf),
+    row(nfl?"Points allowed / game":"Goals against / game",num(A.pa),num(H.pa),-A.pa,-H.pa));
+  return el("details",{class:"matchup"},
+    el("summary",{},el("span",{},"Matchup notes",e&&e.team?el("b",{text:` · Edge: ${e.team}`}):null)),
+    el("table",{class:"mtable"},el("thead",{},el("tr",{},el("th",{text:""}),el("th",{text:g.away}),el("th",{text:g.home}))),body),
+    e?el("div",{class:"edge"},e.team?el("b",{text:`Edge: ${teamName(e.team)} — `}):null,e.team?e.text:e.text):null);
+}
+// Safest pick: highest win % (odds) among games not yet locked; falls back to records.
+function pickOfWeek(d,counts,limit,myPick){
+  const open=gamesOn(d).filter(g=>!locked(d,g));if(!open.length)return null;
+  const hasOdds=open.some(g=>g.away_pct!=null);
+  const cands=[];
+  for(const g of open)for(const [team,opp,pct,home] of [[g.away,g.home,g.away_pct,false],[g.home,g.away,g.home_pct,true]]){
+    let score;
+    if(hasOdds){if(pct==null)continue;score=+pct}
+    else{const T=S.stats[team],O=S.stats[opp];if(!T||!O)continue;score=(+T.pct-+O.pct)+(home?.05:0)}
+    cands.push({team,opp,pct:hasOdds?+pct:null,score,home});
+  }
+  if(!cands.length)return null;
+  cands.sort((a,b)=>b.score-a.score);
+  const avail=c=>(counts[c.team]||0)-(myPick===c.team?1:0)<limit;
+  return{best:cands[0],mine:cands.find(avail),hasOdds};
+}
+function renderPickOfWeek(v,d,counts,limit,myPick){
+  const p=pickOfWeek(d,counts,limit,myPick);if(!p)return;
+  const line=(c,label,extra)=>el("div",{class:"potw"},teamLogo(c.team),el("div",{},
+    el("div",{class:"lbl",style:"font-size:.8rem;font-weight:600;color:var(--muted)",text:label}),
+    el("strong",{text:teamName(c.team)}),
+    el("small",{text:`${c.pct!=null?`${Math.round(c.pct)}% to win · `:""}${c.home?"vs":"at"} ${c.opp}${extra?` · ${extra}`:""}`})));
+  const panel=el("div",{class:"panel"},el("h3",{text:"Pick of the week"}));
+  const bestAvail=p.mine&&p.mine.team===p.best.team;
+  panel.append(line(p.best,"Safest pick",p.mine?bestAvail?"still available to you":"you’ve already used them":null));
+  if(p.mine&&!bestAvail)panel.append(line(p.mine,"Best still available to you"));
+  panel.append(el("p",{class:"meta",style:"margin:10px 0 0",text:p.hasOdds?"Based on sportsbook win odds for games that haven’t locked yet.":"Win odds aren’t posted yet, so this is based on team records and home field. It will switch to odds once they’re out."}));
+  v.append(panel);
+}
+function renderExperts(v,d){
+  const nfl=S.pool.sport==="nfl";
+  const g=S.games.find(x=>x.game_date===d);
+  const q=nfl?`NFL ${(g&&g.week_label)||"this week"} survivor picks`:`NHL picks ${new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric"})}`;
+  const links=nfl?[
+    ["ESPN expert picks","Straight-up picks from ESPN’s analysts","https://www.espn.com/nfl/picks"],
+    ["CBS Sports expert picks","Weekly picks from CBS’s panel","https://www.cbssports.com/nfl/picks/experts/"],
+    ["Yahoo Sports NFL","Previews and analysis","https://sports.yahoo.com/nfl/"],
+    ["Covers NFL picks","Betting-focused picks and trends","https://www.covers.com/picks/nfl"],
+    [`Search: ${q}`,"Latest survivor-pick articles from around the web",`https://www.google.com/search?q=${encodeURIComponent(q)}`]
+  ]:[
+    ["Covers NHL picks","Betting-focused picks for every game","https://www.covers.com/picks/nhl"],
+    ["CBS Sports NHL","News, previews and picks","https://www.cbssports.com/nhl/"],
+    ["Yahoo Sports NHL","Previews and analysis","https://sports.yahoo.com/nhl/"],
+    ["ESPN NHL","News and game previews","https://www.espn.com/nhl/"],
+    [`Search: ${q}`,"Latest pick articles for this Saturday",`https://www.google.com/search?q=${encodeURIComponent(q)}`]
+  ];
+  const panel=el("div",{class:"panel"},el("h3",{text:"What the experts say"}),
+    el("p",{class:"meta",style:"margin:0 0 4px",text:"Opens their sites in a new tab."}));
+  for(const [t,sub,href] of links)panel.append(el("a",{class:"xlink",href,target:"_blank",rel:"noopener"},t,el("small",{text:sub})));
+  v.append(panel);
+}
+
+// "Your Picks": the first page players see. This week's pick at a glance, lives, and history.
+function renderMine(v){
+  const me=S.standings.find(r=>r.user_id===uid());
+  const limit=S.pool.max_picks_per_team;
+  const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
+  if(me)v.append(el("div",{class:"me"},
+    el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
+      el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
+    puckRow(me.lives_left,S.pool.lives)));
+  renderWinner(v);
+  const weeks=weekList();
+  const go=el("a",{class:"btn wide",href:`#pool/${S.pool.id}/saturday`,style:"display:block;text-align:center;text-decoration:none;margin-bottom:16px"});
+  if(weeks.length){
+    const d=weeks[S.weekIdx];
+    const pk=S.myPicks.find(p=>p.game_date===d);
+    const alive=me&&me.lives_left>0;
+    const gs=gamesOn(d);
+    v.append(el("h2",{style:"margin:4px 0 10px;font-size:1.5rem",text:slateTitle(d)}));
+    if(pk){
+      const g=pickGame(pk),r=pickResult(pk);
+      const pct=pickPct(pk);
+      const repick=r==="pp"&&S.pool.postponed_rule==="repick";
+      const lockedIn=g&&!repick&&locked(d,g);
+      const status=r==="pp"?(repick?"Your game was postponed. Pick another team.":"Postponed · counts as a win"):r==="w"?"Won ✓":r==="l"?"Lost":lockedIn?"Locked in":"You can change it until it locks";
+      v.append(el("div",{class:"mypick"},teamLogo(pk.team),el("div",{},el("div",{class:"lbl",text:"✓ Your pick"}),
+        el("strong",{text:teamName(pk.team)}),el("small",{text:`${pct!=null?`${Math.round(pct)}% to win · `:""}${status}`}))));
+      if(alive&&(!lockedIn||repick)&&r!=="w"&&r!=="l"){go.textContent=repick?"Pick another team":"Change your pick";v.append(go)}
+    }else if(alive&&gs.some(g=>!locked(d,g))){
+      v.append(el("div",{class:"mypick none"},el("div",{},el("div",{class:"lbl",text:"No pick yet"}),el("small",{text:lockText()}))));
+      go.textContent=`Make your pick for ${S.pool.sport==="nfl"?"this week":"Saturday"}`;v.append(go);
+    }else if(alive){
+      v.append(el("div",{class:"note",text:"Picks for this one are closed."}));
+    }
+  }else v.append(el("div",{class:"note",text:"No games loaded yet. They’ll show up automatically."}));
+  renderMyPicks(v,counts,limit);
+}
+
+function renderMyPicks(v,counts,limit){
+  if(!S.myPicks.length)return;
+  const list=el("div",{class:"panel",style:"margin-top:22px"},el("h3",{text:"Your picks"}));
+  for(const p of [...S.myPicks].sort((a,b)=>b.game_date.localeCompare(a.game_date))){
+    const r=pickResult(p);
+    list.append(el("div",{class:"prow"},el("div",{class:"top"},
+      el("div",{class:"pickrow"},teamLogo(p.team,true),el("div",{},el("strong",{text:teamName(p.team)}),el("div",{class:"detail",style:"margin:0",text:slateTitle(p.game_date)}))),
+      el("span",{class:"hist"},el("span",{class:resClass(r),text:r==="p"?"Saved":resLabel(r)})))));
+  }
+  const maxed=Object.entries(counts).filter(([,c])=>c>=limit).map(([t])=>t);
+  if(maxed.length)list.append(el("p",{class:"meta",style:"margin:10px 0 0",text:`Can’t pick again: ${maxed.join(", ")}`}));
+  v.append(list);
+}
+
+function renderAllPicks(v){
+  const weeks=weekList();
+  if(!weeks.length){v.append(el("div",{class:"note",text:"No games loaded yet."}));return}
+  if(S.picksIdx==null||S.picksIdx<0||S.picksIdx>=weeks.length)S.picksIdx=S.weekIdx;
+  const d=weeks[S.picksIdx];
+  const prev=el("button",{"aria-label":`Previous ${sportOf().slate}`,text:"‹",onclick:()=>{S.picksIdx--;renderPool("picks")}});prev.disabled=S.picksIdx<=0;
+  const next=el("button",{"aria-label":`Next ${sportOf().slate}`,text:"›",onclick:()=>{S.picksIdx++;renderPool("picks")}});next.disabled=S.picksIdx>=weeks.length-1;
+  v.append(el("div",{class:"weekbar"},prev,el("h2",{text:slateTitle(d)}),next));
+
+  const gs=gamesOn(d);
+  const allLocked=gs.length>0&&gs.every(g=>locked(d,g));
+  const picks=S.allPicks.filter(p=>p.game_date===d);
+  const rows=[...S.standings].sort((a,b)=>b.lives_left-a.lives_left||(a.display_name||"").localeCompare(b.display_name||""));
+  const picked=picks.length,visible=picks.filter(p=>!p.hidden);
+  v.append(el("p",{class:"meta",text:`${picked} of ${rows.length} have picked.`+` ${revealText()}`}));
+
+  // Most popular picks among the ones that are visible
+  if(visible.length){
+    const c={};for(const p of visible)c[p.team]=(c[p.team]||0)+1;
+    const top=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const pop=el("div",{class:"popular"});
+    for(const [t,n] of top)pop.append(el("span",{},teamLogo(t,true),`${t} · ${n}`));
+    v.append(el("div",{class:"panel"},el("h3",{text:"Most picked"}),pop));
+  }
+
+  const panel=el("div",{class:"panel"},el("h3",{text:"Everyone’s picks"}));
+  for(const r of rows){
+    const p=picks.find(x=>x.user_id===r.user_id);
+    let pk;
+    if(p&&p.hidden)pk=el("div",{class:"pk"},el("div",{},el("strong",{text:"Picked"})));
+    else if(p){
+      const res=pickResult(p);
+      pk=el("div",{class:"pk"},el("div",{},el("strong",{text:teamName(p.team)}),
+        el("span",{class:"res "+resClass(res),text:resLabel(res)})),teamLogo(p.team,true));
+    }else{
+      const missed=weekDone(d)&&S.pool.missed_pick_strike;
+      pk=el("div",{class:"pk"},el("div",{},el("strong",{text:r.lives_left<=0&&!missed?"Eliminated":allLocked||weekDone(d)?"No pick":"Not picked yet"}),
+        missed?el("span",{class:"res l",text:"Missed · strike"}):null));
+    }
+    panel.append(el("div",{class:"pkrow"},
+      el("div",{class:"who"},el("strong",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")}),
+        el("small",{text:`${r.strikes} strike${r.strikes===1?"":"s"} · ${r.lives_left<=0?"eliminated":`${r.lives_left} ${r.lives_left===1?"life":"lives"} left`}`})),
+      pk));
+  }
+  v.append(panel);
+}
+
+/* ---------- Winner & tiebreakers ---------- */
+const todayET=()=>new Date().toLocaleDateString("en-CA",{timeZone:"America/New_York"});
+function seasonOver(){
+  const end=S.pool.end_date;if(!end)return false;
+  const weeks=weekList();
+  return weeks.length>0&&todayET()>end&&weeks.every(weekDone);
+}
+function underdogScore(uid_){
+  let sum=0;for(const pk of S.allPicks.filter(x=>x.user_id===uid_&&x.team)){const v=pickPct(pk);if(v!=null)sum+=v}
+  return sum;
+}
+function poolWinners(){
+  const st=S.standings;if(!st||st.length<2)return null;
+  const alive=st.filter(r=>r.lives_left>0);
+  if(alive.length===1)return{list:alive,why:"Last one standing"};
+  if(!seasonOver())return null;
+  let c=alive.length?alive:st;
+  const tb=S.pool.tiebreaker||"split";
+  if(c.length>1&&tb==="wins"){const m=Math.max(...c.map(r=>r.wins));c=c.filter(r=>r.wins===m);return{list:c,why:`Season over · most wins (${m})`}}
+  if(c.length>1&&tb==="underdog"){const sc=c.map(r=>[r,underdogScore(r.user_id)]);const m=Math.min(...sc.map(x=>x[1]));
+    c=sc.filter(x=>Math.abs(x[1]-m)<0.05).map(x=>x[0]);return{list:c,why:"Season over · underdog tiebreaker (riskiest picks)"}}
+  return{list:c,why:c.length>1?"Season over · co-winners":"Season over"};
+}
+function renderWinner(v){
+  const w=poolWinners();if(!w)return;
+  const names=w.list.map(r=>r.display_name||"Player");
+  const label=names.length>1?`Co-winners: ${names.slice(0,-1).join(", ")} & ${names[names.length-1]}`:`Winner: ${names[0]}`;
+  v.append(el("div",{class:"winner"},el("div",{class:"cup",text:"🏆"}),
+    el("div",{},el("strong",{text:label}),el("small",{text:w.why+(S.pool.friendly?" · bragging rights earned":"")}))));
+}
+
+function renderStandings(v){
+  const rows=[...S.standings].sort((a,b)=>b.lives_left-a.lives_left||b.wins-a.wins||(a.display_name||"").localeCompare(b.display_name||""));
+  const alive=rows.filter(r=>r.lives_left>0).length;
+  renderWinner(v);
+  v.append(el("p",{class:"meta",style:"margin:0 0 12px",text:`${alive} of ${rows.length} still alive`}));
+  const tb=el("tbody");
+  for(const r of rows){
+    const hist=el("div",{class:"hist"});
+    for(const p of S.allPicks.filter(x=>x.user_id===r.user_id).sort((a,b)=>a.game_date.localeCompare(b.game_date))){
+      if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
+      const res=pickResult(p);
+      hist.append(el("span",{class:resClass(res),title:slateTitle(p.game_date),text:p.team}));
+    }
+    tb.append(el("tr",{class:r.lives_left<=0?"out":""},
+      el("td",{},el("div",{style:"font-weight:600",text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(r.is_commissioner?" · commissioner":"")}),
+        el("div",{class:"meta",style:"margin:0",text:`${r.wins}–${r.losses} · ${r.strikes} strike${r.strikes===1?"":"s"}${r.revived?` · ${r.revived} life${r.revived===1?"":"s"} given back`:""}${r.lives_left<=0?" · out":""}`}),hist),
+      el("td",{},puckRow(r.lives_left,S.pool.lives))));
+  }
+  v.append(el("div",{class:"tablewrap"},el("table",{},el("thead",{},el("tr",{},el("th",{text:"Player · picks"}),el("th",{text:"Lives"}))),tb)));
+  v.append(el("p",{class:"meta",style:"margin-top:10px",text:`Other players’ picks show as “Picked” until then. ${revealText()}`}));
+  if(!isCommish()){
+    const leave=el("button",{class:"sm danger",text:"Leave this pool"});
+    leave.onclick=async()=>{if(leave.dataset.armed!=="1"){leave.dataset.armed="1";leave.textContent="Tap again to leave";return}
+      const{error}=await sb.from("pool_members").delete().eq("pool_id",S.pool.id).eq("user_id",uid());
+      if(error)return toast(errText(error));toast("You left the pool");location.hash="#home"};
+    v.append(el("div",{style:"margin-top:22px"},leave));
+  }
+}
+
+// Rules everyone can see: the commissioner's own notes plus the app's settings, always current.
+function appRules(){
+  const po=S.pool,nfl=po.sport==="nfl",slate=sportOf().slate;
+  const deadline={
+    game:"Each pick locks when that game starts.",
+    first:nfl?"Picks are due before the first game of the week (usually Thursday night).":"Picks are due before the first puck drop on Saturday.",
+    sunday_first:"Picks are due before the first Sunday kickoff. Teams whose game has already started can’t be picked.",
+    sunday_1pm:"Picks are due Sunday at 1:00 p.m. Eastern. Teams whose game has already started can’t be picked."
+  }[po.lock_mode]||"Each pick locks when that game starts.";
+  return [
+    nfl?"Pick one NFL team to win each week (Thursday through Monday).":"Pick one NHL team to win each Saturday. Only Saturday games count.",
+    `Everyone starts with ${po.lives} ${po.lives===1?"life":"lives"}. A loss costs a life${nfl?" (a tie counts as a loss)":" (overtime and shootout losses count as losses)"}.`,
+    `Each team can be picked ${po.max_picks_per_team===2?"twice":"once"} per season.`,
+    deadline,
+    "Everyone’s picks are revealed once the pick deadline passes.",
+    po.postponed_rule==="repick"?"If your game is postponed or cancelled, you can re-pick from games that haven’t started. If you don’t, it counts as a win.":"If your game is postponed or cancelled, it counts as a win.",
+    po.end_date?`The season’s last ${slate} is ${new Date(po.end_date+"T12:00:00").toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"})}.`:"The pool runs until one player is left.",
+    "If only one player is left, they win.",
+    {split:"If more than one player is left when the season ends, they’re co-winners.",wins:"If more than one player is left when the season ends, the most wins takes it. Still tied? Co-winners.",underdog:"If more than one player is left when the season ends, whoever took the biggest risks (the lowest total win odds across their picks) wins."}[po.tiebreaker||"split"],
+    po.missed_pick_strike?`Missing a ${slate} costs a life.`:`Missing a ${slate} doesn’t cost a life.`,
+    po.revive_if_all_out!==false?`If everyone still in is knocked out in the same ${slate}, they all get that life back.`:`If everyone still in is knocked out in the same ${slate}, they’re all eliminated.`,
+    "The commissioner has the final say and can add or give back strikes."
+  ];
+}
+function renderRules(v){
+  const own=(S.pool.rules||"").trim();
+  if(S.pool.friendly)v.append(el("div",{class:"panel",style:"border-color:#F5C542;border-width:2px"},
+    el("h3",{text:"🏆 Friendly pool"}),el("p",{style:"margin:0",text:"No money in this one. We’re playing for bragging rights."})));
+  const c=el("div",{class:"panel"},el("h3",{text:"Commissioner’s rules"}));
+  c.append(own?el("p",{class:"rulestext",text:own}):el("p",{class:"meta",style:"margin:0",text:isCommish()?"You haven’t added any rules yet. Add them on the Commish tab.":"The commissioner hasn’t added any extra rules yet."}));
+  const list=el("ul",{class:"ruleslist"});for(const r of appRules())list.append(el("li",{text:r}));
+  v.append(c,el("div",{class:"panel"},el("h3",{text:"How this pool works"}),
+    el("p",{class:"meta",style:"margin:0 0 8px",text:"These update automatically when the commissioner changes the settings."}),list));
+}
+
+function renderCommish(v){
+  const po=S.pool;
+  const opt=(pairs,cur)=>pairs.map(([val,label])=>el("option",{value:val,selected:String(val)===String(cur),text:label}));
+  const name=el("input",{type:"text",value:po.name,maxlength:"60"});
+  const lives=el("select",{},...opt([1,2,3,4,5].map(n=>[n,`${n} ${n===1?"life":"lives"}`]),po.lives));
+  const reuse=el("select",{},...opt([[1,"Once per season"],[2,"Twice per season"]],po.max_picks_per_team));
+  const lockChoices=po.sport==="nfl"
+    ?[["first","Before the first game of the week"],["sunday_first","Before the first Sunday game"],["sunday_1pm","Sunday at 1:00 p.m. Eastern"],["game","When each player’s picked game starts"]]
+    :[["game","When each player’s picked game starts"],["first","At the first puck drop of the day"]];
+  const lock=el("select",{},...opt(lockChoices,po.lock_mode));
+  const missed=el("input",{type:"checkbox",checked:po.missed_pick_strike});
+  const revive=el("input",{type:"checkbox",checked:po.revive_if_all_out!==false});
+  const friendly=el("input",{type:"checkbox",checked:!!po.friendly});
+  const postponed=el("select",{},...opt([["win","Counts as a win (no strike)"],["repick","Player can re-pick another game"]],po.postponed_rule||"win"));
+  const endDate=el("input",{type:"date",value:po.end_date||""});
+  const tiebreak=el("select",{},...opt([["split","Co-winners share the title"],["wins","Most wins, then co-winners"],["underdog","Underdog: riskiest picks win"]],po.tiebreaker||"split"));
+  const save=el("button",{class:"btn",text:"Save settings"});
+  save.onclick=async()=>{save.disabled=true;
+    const{error}=await sb.from("pools").update({name:name.value.trim()||po.name,lives:+lives.value,max_picks_per_team:+reuse.value,lock_mode:lock.value,reveal_picks:"start",missed_pick_strike:missed.checked,revive_if_all_out:revive.checked,friendly:friendly.checked,postponed_rule:postponed.value,end_date:endDate.value||null,tiebreaker:tiebreak.value}).eq("id",po.id);
+    save.disabled=false;if(error)return toast(errText(error));toast("Settings saved");refresh()};
+  v.append(el("div",{class:"panel"},el("h3",{text:"Pool settings"}),
+    el("label",{class:"field"},el("span",{text:"Survivor pool name"}),name),
+    el("label",{class:"field"},el("span",{text:"Lives per player"}),lives),
+    el("label",{class:"field"},el("span",{text:"Each team can be picked"}),reuse),
+    el("label",{class:"field"},el("span",{text:"Pick deadline"}),lock),
+    el("p",{class:"meta",style:"margin:-4px 0 14px",text:"Everyone’s picks are revealed once the pick deadline passes."}),
+    el("label",{class:"field"},el("span",{text:"If a picked game is postponed or cancelled"}),postponed),
+    el("label",{class:"field"},el("span",{text:"Season ends (last week that counts)"}),endDate,
+      el("small",{class:"meta",style:"display:block;margin-top:4px",text:po.sport==="nfl"
+        ?"Pick the Sunday of the last week that counts. Week 18 ends the regular season in early January; choose a later date to include the playoffs. Leave blank to keep going."
+        :"Pick the last Saturday that counts. The regular season ends in mid-April; choose a later date to include the playoffs. Leave blank to keep going."})),
+    el("label",{class:"field"},el("span",{text:"If more than one player is left when the season ends"}),tiebreak),
+    el("label",{class:"check"},missed,`A missed ${sportOf().slate} costs a life`),
+    el("label",{class:"check",style:"align-items:flex-start"},revive,el("span",{},`If everyone still in is knocked out in the same ${sportOf().slate}, they all get that life back`)),
+    el("label",{class:"check",style:"align-items:flex-start"},friendly,el("span",{},"🏆 Friendly pool: no money, playing for bragging rights (shows a badge to everyone)")),
+    save));
+
+  // Rules box: everyone sees this in the "Pool rules" drop-down
+  const rules=el("textarea",{class:"rules",maxlength:"5000",placeholder:"e.g. $20 entry, winner takes all. Postponed games count as a win. Buy-backs allowed until Week 4."});
+  rules.value=po.rules||"";
+  const saveRules=el("button",{class:"btn",text:"Save rules"});
+  saveRules.onclick=async()=>{saveRules.disabled=true;
+    const{error}=await sb.from("pools").update({rules:rules.value.trim()}).eq("id",po.id);
+    saveRules.disabled=false;if(error)return toast(errText(error));toast("Rules saved");refresh()};
+  v.append(el("div",{class:"panel"},el("h3",{text:"Pool rules"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:"Everyone in the pool sees these under “Pool rules” at the top of the pool, along with a summary of your settings."}),
+    rules,el("div",{style:"margin-top:10px"},saveRules)));
+
+  // Invites
+  const email=el("input",{type:"email",placeholder:"friend@example.com","aria-label":"Email to invite"});
+  const send=el("button",{class:"btn",text:"Send invite"});
+  send.onclick=async()=>{const e=email.value.trim();if(!e)return email.focus();send.disabled=true;
+    const{data,error}=await sb.functions.invoke("send-invite",{body:{pool_id:po.id,email:e}});
+    send.disabled=false;
+    let msg=error?errText(error):data&&data.error;
+    if(error&&error.context&&error.context.json){try{msg=(await error.context.json()).error||msg}catch{}}
+    if(msg)return toast(msg);
+    toast(data.status==="existing_user"?`Invite sent. ${e} already has an account and will see it when they sign in.`:`Invite emailed to ${e}`);
+    email.value="";refresh()};
+  const inv=el("div",{class:"panel"},el("h3",{text:"Invite players"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"They’ll get an email with a link to join and set a password."}),
+    el("div",{class:"row"},email,send));
+  if(S.pending.length){
+    inv.append(el("p",{style:"font-weight:600;margin:16px 0 6px",text:"Waiting to join"}));
+    for(const p of S.pending){
+      inv.append(el("div",{class:"prow"},el("div",{class:"top"},
+        el("div",{},el("div",{text:p.email}),el("div",{class:"detail",style:"margin:0",text:`Invited ${shortDate(p.created_at.slice(0,10))}`})),
+        el("button",{class:"sm danger",text:"Cancel",onclick:async()=>{await sb.from("invites").delete().eq("id",p.id);toast("Invite cancelled");refresh()}}))));
+    }
+  }
+  v.append(inv);
+
+  // Players + strikes
+  const pl=el("div",{class:"panel"},el("h3",{text:"Players and strikes"}));
+  for(const r of [...S.standings].sort((a,b)=>(a.display_name||"").localeCompare(b.display_name||""))){
+    const adjust=async delta=>{const{error}=await sb.rpc("adjust_strike",{p:po.id,u:r.user_id,delta});if(error)return toast(errText(error));toast(delta>0?"Strike added":"Strike given back");refresh()};
+    const add=el("button",{class:"sm",text:"Add strike",onclick:()=>adjust(1)});
+    const back=el("button",{class:"sm",text:"Give strike back",onclick:()=>adjust(-1)});
+    back.disabled=r.strikes<=0;
+    const acts=el("div",{class:"acts"},add,back);
+    if(r.user_id!==uid()){
+      const rm=el("button",{class:"sm danger",text:"Remove player"});
+      rm.onclick=async()=>{if(rm.dataset.armed!=="1"){rm.dataset.armed="1";rm.textContent="Tap again to remove";return}
+        const{error}=await sb.rpc("remove_member",{p:po.id,u:r.user_id});if(error)return toast(errText(error));toast("Player removed");refresh()};
+      acts.append(rm);
+    }
+    const parts=[`${r.losses} from losses`];if(r.missed)parts.push(`${r.missed} missed`);if(r.adjust)parts.push(`${r.adjust>0?"+":""}${r.adjust} by you`);if(r.revived)parts.push(`${r.revived} given back (everyone out)`);
+    pl.append(el("div",{class:"prow"},
+      el("div",{class:"top"},el("strong",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")}),puckRow(r.lives_left,po.lives)),
+      el("div",{class:"detail",text:`${r.strikes} strike${r.strikes===1?"":"s"}: ${parts.join(", ")} · ${r.lives_left<=0?"eliminated":`${r.lives_left} left`}`}),acts));
+  }
+  v.append(pl);
+
+  // Games + danger zone
+  const sync=el("button",{class:"sm",text:"Refresh games and odds"});
+  sync.onclick=async()=>{sync.disabled=true;const{data,error}=await sb.functions.invoke("sync-games",{body:{}});sync.disabled=false;
+    if(error||!data||!data.ok)return toast("Couldn’t refresh games right now.");toast("Games refreshed");refresh()};
+  const del=el("button",{class:"sm danger",text:"Delete this pool"});
+  del.onclick=async()=>{if(del.dataset.armed!=="1"){del.dataset.armed="1";del.textContent="Tap again to delete for everyone";return}
+    const{error}=await sb.from("pools").delete().eq("id",po.id);if(error)return toast(errText(error));toast("Pool deleted");location.hash="#home"};
+  v.append(el("div",{class:"panel"},el("h3",{text:"Games"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"Games, scores and odds update on their own every 5 minutes. Refresh if you need them sooner."}),
+    el("div",{class:"acts"},sync,del)));
+}
+
+/* ---------- Start ---------- */
+(async()=>{
+  if(!configured)return route();
+  sb.auth.onAuthStateChange((event,session)=>{
+    const was=S.session&&S.session.user.id;S.session=session;
+    if(event==="PASSWORD_RECOVERY")S.needsPassword=true;
+    if(event==="SIGNED_OUT"){S.pool=null;S.loadedPool=null}
+    if((session&&session.user.id)!==was)setTimeout(route,0);
+  });
+  const{data}=await sb.auth.getSession();S.session=data.session;
+  if(/access_token|error_description/.test(location.hash)){
+    const err=new URLSearchParams(location.hash.slice(1)).get("error_description");
+    history.replaceState(null,"",location.pathname+location.search+"#home");
+    if(err)S.authMsg={text:err.replace(/\+/g," ")};
+  }
+  route();
+  setInterval(()=>{const r=parseRoute();if(document.visibilityState==="visible"&&S.session&&r.view==="pool"&&r.tab!=="commish")refresh()},60000);
+})();
+</script>
+</body>
+</html>
