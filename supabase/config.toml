@@ -1,0 +1,8 @@
+# Settings the Supabase command line uses when deploying functions.
+project_id = "survivor-pools"
+
+[functions.send-invite]
+verify_jwt = true
+
+[functions.sync-games]
+verify_jwt = false
