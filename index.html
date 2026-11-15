@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T20:45">
+<meta name="app-version" content="2026-11-15T21:10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -264,6 +264,16 @@ tr.out td{opacity:.5}
 .remrow input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--blue)}
 .remrow span{display:flex;flex-direction:column}
 .renamebtn{background:none;border:0;padding:0;margin:2px 0;color:var(--blue);font:inherit;font-size:.85rem;cursor:pointer;text-decoration:underline}
+.av{display:inline-flex;flex:none;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;vertical-align:middle}
+.av svg{display:block}
+.av-i{background:var(--blue);color:#fff;font-weight:700}
+.acctlink{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:#fff;text-align:center;max-width:96px}
+.acctlink .acctname{font-size:.78rem;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff}
+.acctlink .acctsub{font-size:.7rem;color:#A9BCCD;text-decoration:underline}
+.avhead{font-weight:600;margin:12px 0 8px}
+.avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px}
+.avpick{background:none;border:3px solid transparent;border-radius:50%;padding:2px;cursor:pointer;width:66px;height:66px;display:flex;align-items:center;justify-content:center}
+.avpick.on{border-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -375,7 +385,7 @@ const pickPctOrEst=pk=>{const g=pickGame(pk);if(!g)return null;const w=winPcts(g
 function puckRow(left,total){const r=el("div",{class:"pucks","aria-label":`${left} of ${total} lives left`});for(let i=0;i<total;i++)r.append(el("span",{class:"puck"+(i<left?"":" lost")}));return r}
 
 /* ---------- Routing ---------- */
-function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="join"&&p[1])return{view:"join",code:decodeURIComponent(p[1])};if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["picks","standings","rules","chat","commish"].includes(p[2])?p[2]:"saturday"};return{view:"home"}}
+function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="join"&&p[1])return{view:"join",code:decodeURIComponent(p[1])};if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["picks","standings","rules","chat","commish"].includes(p[2])?p[2]:"saturday"};if(p[0]==="profile")return{view:"profile"};return{view:"home"}}
 
 async function route(){
   if(!configured)return renderSetupNeeded();
@@ -390,7 +400,7 @@ async function route(){
   }else{
     S.loadedPool=null;S.pool=null;
     renderHeader(null);
-    await loadHome();renderHome();
+    await loadHome();if(parseRoute().view==="profile"){renderHeader(null);renderProfile()}else renderHome();
   }
 }
 addEventListener("hashchange",route);
@@ -407,8 +417,8 @@ function renderHeader(tabs){
   const row=el("div",{class:"hrow"},left);
   if(S.session){
     const meta=S.session.user.user_metadata||{};
-    row.append(el("div",{class:"acct"},el("div",{text:S.team||meta.display_name||S.session.user.email}),
-      el("button",{text:"Sign out",onclick:async()=>{S.prefs=null;await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}})));
+    const nm=S.team||meta.display_name||S.session.user.email;
+    row.append(el("a",{class:"acct acctlink",href:"#profile","aria-label":"My profile"},avatarEl(myAvatar(),nm,38),el("div",{class:"acctname",text:nm}),el("div",{class:"acctsub",text:"Profile"})));
   }
   h.append(row);
   if(tabs){
@@ -586,10 +596,88 @@ async function renderJoin(code,mode,note){
   app.append(p);
 }
 
+// Original avatar badges: [id, label, background, inner SVG]
+const W='fill="#fff"',WS='fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
+const AVATARS={
+hockey:[
+ ["h-puck","Puck","#12263A",`<path d="M10 20v8c0 3.6 6.3 6.5 14 6.5s14-2.9 14-6.5v-8" fill="#1b1b1b" stroke="#fff" stroke-width="2"/><ellipse cx="24" cy="20" rx="14" ry="6.5" fill="#3a3a3a" stroke="#fff" stroke-width="2"/>`],
+ ["h-sticks","Sticks","#D7262E",`<path d="M14 9l15 25h8M34 9L19 34h-8" ${WS} stroke-width="3.5"/><ellipse cx="24" cy="39" rx="5" ry="2" fill="#12263A"/>`],
+ ["h-mask","Goalie mask","#2453A6",`<path d="M24 8c8.5 0 13 6 13 14.5 0 9.5-5.5 17.5-13 17.500S11 32 11 22.500C11 14 15.5 8 24 8z" ${W}/><ellipse cx="18.5" cy="21" rx="3.4" ry="2.5" fill="#2453A6"/><ellipse cx="29.5" cy="21" rx="3.4" ry="2.5" fill="#2453A6"/><g fill="#2453A6"><circle cx="20" cy="29.5" r="1.3"/><circle cx="24" cy="29.5" r="1.3"/><circle cx="28" cy="29.5" r="1.3"/><circle cx="22" cy="34" r="1.3"/><circle cx="26" cy="34" r="1.3"/></g>`],
+ ["h-net","Net","#1D7A4A",`<path d="M10 35V17q14-8 28 0v18" ${WS}/><path d="M17 14.500V35M24 13v22M31 14.500V35M10 22h28M10 28.500h28" fill="none" stroke="#fff" stroke-width="1.3" opacity=".85"/><path d="M7 35h34" ${WS}/>`],
+ ["h-skate","Skate","#6B3FA0",`<path d="M15 9h10v10l10 5c2.5 1.2 4 3.2 4 6v2H15z" ${W}/><path d="M19 13h4M19 17h4" stroke="#6B3FA0" stroke-width="1.6" stroke-linecap="round"/><path d="M20 32v5M34 32v5M12 38h27c2 0 3-1 3-2" ${WS} stroke-width="2.5"/>`],
+ ["h-cup","Cup","#C98A12",`<path d="M15 10h18v7c0 5.5-4 10-9 10s-9-4.5-9-10z" ${W}/><path d="M15 12h-3c0 5 1.5 8 5 8.500M33 12h3c0 5-1.5 8-5 8.5" ${WS} stroke-width="2.2"/><rect x="22" y="26" width="4" height="6" ${W}/><rect x="16" y="32" width="16" height="5" rx="1.5" ${W}/>`],
+],
+football:[
+ ["f-ball","Football","#1D7A4A",`<g transform="rotate(-35 24 24)"><path d="M6 24c5-9.5 13-11 18-11s13 1.5 18 11c-5 9.5-13 11-18 11S11 33.5 6 24z" fill="#8B4A22" stroke="#fff" stroke-width="2"/><path d="M17 24h14M20 21.500v5M24 21.500v5M28 21.500v5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></g>`],
+ ["f-helmet","Helmet","#D7262E",`<path d="M9 27c0-10 6.5-16 15-16 8 0 13 5 13 12.500V26h-9.500l-2 8H15c-3.5 0-6-2.5-6-7z" ${W}/><circle cx="19" cy="25" r="2.3" fill="#D7262E"/><path d="M12 17c6-3 14-3 20 0" fill="none" stroke="#D7262E" stroke-width="2"/><path d="M28 26h11v8h-9M33 26v8" ${WS} stroke-width="2.2"/>`],
+ ["f-posts","Goalposts","#2453A6",`<path d="M24 40V27M11 27h26M11 27V9M37 27V9" fill="none" stroke="#F5C542" stroke-width="3.5" stroke-linecap="round"/>`],
+ ["f-jersey","Jersey","#12263A",`<path d="M17 9l-10 5 3.5 8 4.5-2v19h18V20l4.5 2 3.5-8-10-5c-1 3-3.5 4.5-7 4.500S18 12 17 9z" ${W}/><text x="24" y="33" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="14" fill="#12263A">1</text>`],
+ ["f-finger","Foam finger","#C98A12",`<path d="M20 8.500a3.5 3.5 0 017 0V21h5a4 4 0 014 4v11a4 4 0 01-4 4H17a4 4 0 01-4-4V25a4 4 0 014-4h3z" ${W}/><text x="24.5" y="35" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="11" fill="#C98A12">#1</text>`],
+ ["f-star","MVP star","#6B3FA0",`<path d="M24 7l5 11 12 1.3-9 8.2 2.6 11.800L24 33.2 13.4 39.3 16 27.5 7 19.3 19 18z" ${W}/>`],
+]};
+
+const AV_BY={};for(const k in AVATARS)for(const a of AVATARS[k])AV_BY[a[0]]=a;
+const avSvg=(a,size)=>`<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="${a[2]}"/>${a[3]}</svg>`;
+function avatarEl(key,name,size=36){
+  const a=AV_BY[key],n=el("span",{class:"av",style:`width:${size}px;height:${size}px`});
+  if(a)n.innerHTML=avSvg(a,size);
+  else{n.classList.add("av-i");n.style.fontSize=Math.round(size*.45)+"px";n.textContent=(String(name||"?").trim().charAt(0)||"?").toUpperCase()}
+  return n;
+}
+const myAvatar=()=>{if(S.avatar!==undefined)return S.avatar;const r=(S.standings||[]).find(x=>x.user_id===uid());return r?r.avatar:null};
+
+/* ---------- Player profile ---------- */
+function renderProfile(){
+  const app=$("app");app.replaceChildren();
+  const email=S.session.user.email;
+  app.append(el("a",{class:"back",href:"#home",style:"display:inline-block;margin-bottom:10px;color:var(--blue)",text:"‹ My pools"}));
+  // Avatar
+  const top=el("div",{class:"me",style:"margin-bottom:12px"},avatarEl(S.avatar,S.team,64),
+    el("div",{style:"flex:1;min-width:0"},el("div",{class:"who",style:"font-size:1.15rem",text:(S.team||"Your team")+(S.first?` (${S.first})`:"")}),el("div",{class:"used",text:email})));
+  const pick=el("div",{class:"panel"},el("h3",{text:"Your avatar"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:"Tap one to use it. Everyone in your pools sees it next to your name."}));
+  const group=(title,list)=>{const g=el("div",{class:"avgrid"});
+    for(const a of list){const b=el("button",{class:"avpick"+(S.avatar===a[0]?" on":""),"aria-label":a[1],title:a[1]});b.innerHTML=avSvg(a,56);
+      b.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:a[0]}).eq("id",uid());if(error)return toast(errText(error));
+        S.avatar=a[0];toast("Avatar saved");renderHeader(null);renderProfile()};g.append(b)}
+    pick.append(el("div",{class:"avhead",text:title}),g)};
+  group("🏒 Hockey",AVATARS.hockey);group("🏈 Football",AVATARS.football);
+  if(S.avatar){const none=el("button",{class:"sm",style:"margin-top:12px",text:"Use my initial instead"});
+    none.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:null}).eq("id",uid());if(error)return toast(errText(error));S.avatar=null;renderHeader(null);renderProfile()};pick.append(none)}
+  // Names
+  const fn=el("input",{type:"text",maxlength:"20",autocomplete:"given-name",value:S.first||"",placeholder:"First name"});
+  const tn=el("input",{type:"text",maxlength:"30",value:S.team||""});
+  const nb=el("button",{class:"btn",text:"Save names"});
+  nb.onclick=async()=>{const t=tn.value.trim(),f=cleanFirst(fn.value);
+    if(!f)return toast("Enter your first name.");
+    if(t.length<2||t.includes("@"))return toast("Team names need 2 to 30 characters, with no @.");
+    nb.disabled=true;
+    try{if(f!==S.first)await saveFirstName(f);
+      if(t!==S.team){const{error}=await sb.rpc("set_team_name",{p_name:t});if(error)throw error;S.team=t;await sb.auth.updateUser({data:{display_name:t}})}
+      toast("Saved");renderHeader(null);renderProfile()}catch(e){nb.disabled=false;toast(errText(e))}};
+  const names=el("div",{class:"panel"},el("h3",{text:"Your names"}),
+    el("label",{class:"field"},el("span",{text:"First name"}),fn,el("small",{class:"meta",style:"display:block;margin-top:4px",text:"Shown in brackets after your team name."})),
+    el("label",{class:"field"},el("span",{text:"Default team name"}),tn,el("small",{class:"meta",style:"display:block;margin-top:4px",text:"Used when you join a pool. You can use a different name inside each pool, on the My Team tab, until your first pick locks."})),nb);
+  // Sign-in
+  const p1=el("input",{type:"password",autocomplete:"new-password",minlength:"8"}),p2=el("input",{type:"password",autocomplete:"new-password",minlength:"8"});
+  const pb=el("button",{class:"btn",text:"Change password"});
+  pb.onclick=async()=>{if(p1.value.length<8)return toast("Use at least 8 characters for your password.");
+    if(p1.value!==p2.value)return toast("The two passwords don’t match.");
+    pb.disabled=true;const{error}=await sb.auth.updateUser({password:p1.value});pb.disabled=false;
+    if(error)return toast(errText(error));p1.value=p2.value="";toast("Password changed")};
+  const out=el("button",{class:"sm",text:"Sign out",onclick:async()=>{S.prefs=null;S.avatar=undefined;await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}});
+  const login=el("div",{class:"panel"},el("h3",{text:"Sign-in details"}),
+    el("label",{class:"field"},el("span",{text:"Login (email)"}),el("input",{type:"email",value:email,readonly:true,autocomplete:"username"})),
+    el("label",{class:"field"},el("span",{text:"New password (8+ characters)"}),p1),
+    el("label",{class:"field"},el("span",{text:"Type the new password again"}),p2),pb,
+    el("div",{style:"margin-top:18px;padding-top:14px;border-top:1px solid var(--line)"},out));
+  app.append(top,pick,names,login);
+}
+
 /* ---------- Home ---------- */
 async function loadHome(){
   const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
-    sb.from("profiles").select("display_name,first_name").eq("id",uid()).maybeSingle()]);
+    sb.from("profiles").select("display_name,first_name,avatar").eq("id",uid()).maybeSingle()]);
   S.invites=inv.data||[];S.pools=pools.data||[];
   if(S.invites.length){ // invited by email: join automatically, no extra tap
     let joined=null,name="";
@@ -604,7 +692,7 @@ async function loadHome(){
       if(!error&&id){toast("Your pool is ready. Invite your players next.");location.hash=`#pool/${id}/commish`;return}
     }
   }
-  S.first=(me.data&&me.data.first_name)||"";
+  S.first=(me.data&&me.data.first_name)||"";S.avatar=(me.data&&me.data.avatar)||null;
   if(me.data&&me.data.display_name&&me.data.display_name!==S.team){S.team=me.data.display_name;renderHeader(null)}
 }
 
@@ -677,20 +765,8 @@ function renderHome(){
     el("label",{class:"field"},el("span",{text:"Sport"}),sport),
     el("label",{class:"field"},el("span",{text:"Your team name in this pool"}),poolTeam),
     el("label",{class:"field"},el("span",{text:"Survivor pool name"}),el("div",{class:"row"},name,btn))));
-  const tn=el("input",{type:"text",maxlength:"30",value:S.team,"aria-label":"Team name"});
-  const tb=el("button",{class:"sm",text:"Save"});
-  tb.onclick=async()=>{const t=tn.value.trim();if(!t||t===S.team)return;if(t.includes("@"))return toast("Team names can’t include @.");tb.disabled=true;
-    const{error}=await sb.rpc("set_team_name",{p_name:t});tb.disabled=false;
-    if(error)return toast(errText(error));S.team=t;await sb.auth.updateUser({data:{display_name:t}});renderHeader(null);toast("Team name saved")};
-  app.append(el("div",{class:"panel"},el("h3",{text:"Your default team name"}),
-    el("p",{class:"meta",style:"margin:0 0 12px",text:"Used when you join a pool. You can pick a different name inside each pool, on the My Team tab, until your first pick locks."}),
-    el("div",{class:"row"},tn,tb)));
-  const fn=el("input",{type:"text",maxlength:"20",autocomplete:"given-name",value:S.first||"",placeholder:"First name","aria-label":"First name"});
-  const fb=el("button",{class:"sm",text:"Save"});
-  fb.onclick=async()=>{if(!cleanFirst(fn.value))return fn.focus();fb.disabled=true;try{await saveFirstName(fn.value);toast("First name saved")}catch(e){toast(errText(e))}fb.disabled=false};
-  app.append(el("div",{class:"panel"},el("h3",{text:"Your first name"}),
-    el("p",{class:"meta",style:"margin:0 0 12px",text:"Shown in brackets after your team name in every pool, like MightyPucks (Alex)."}),
-    el("div",{class:"row"},fn,fb)));
+  app.append(el("a",{class:"poolcard",href:"#profile"},el("div",{style:"display:flex;align-items:center;gap:12px"},avatarEl(S.avatar,S.team,44),
+    el("div",{},el("strong",{text:"My profile"}),el("small",{text:"Avatar, names, password and sign out"}))),el("span",{class:"badge",text:"Open ›"})));
   const ib=installButton();if(ib)app.append(ib);
   offerInstall();
 }
@@ -748,7 +824,7 @@ function renderSaturday(v){
   const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
   if(me){
     v.append(el("div",{class:"me"},
-      el("div",{},whoBlock(me),
+      avatarEl(me.avatar,me.team_name,44),el("div",{style:"flex:1;min-width:0"},whoBlock(me),
         el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
       puckRow(me.lives_left,S.pool.lives)));
     if(me.team_name&&me.display_name===me.team_name)v.append(firstNamePanel());
@@ -978,7 +1054,7 @@ function renderMine(v){
   const limit=S.pool.max_picks_per_team;
   const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
   if(me)v.append(el("div",{class:"me"},
-    el("div",{},whoBlock(me),
+    avatarEl(me.avatar,me.team_name,44),el("div",{style:"flex:1;min-width:0"},whoBlock(me),
       el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
     puckRow(me.lives_left,S.pool.lives)));
   renderWinner(v);
@@ -1174,7 +1250,7 @@ function renderStandings(v){
       hist.append(el("span",{class:resClass(res),title:slateTitle(p.game_date),text:p.team}));
     }
     tb.append(el("tr",{class:r.lives_left<=0?"out":""},
-      el("td",{},el("div",{style:"font-weight:600",text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(r.is_commissioner?" · commissioner":"")}),
+      el("td",{},el("div",{style:"font-weight:600;display:flex;align-items:center;gap:8px"},avatarEl(r.avatar,r.team_name,28),el("span",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(r.is_commissioner?" · commissioner":"")})),
         el("div",{class:"meta",style:"margin:0",text:`${r.wins}–${r.losses} · ${r.strikes} strike${r.strikes===1?"":"s"}${r.revived?` · ${r.revived} life${r.revived===1?"":"s"} given back`:""}${r.lives_left<=0?" · out":""}`}),hist),
       el("td",{},puckRow(r.lives_left,S.pool.lives))));
   }
@@ -1277,7 +1353,7 @@ function renderChatMessages(){
       when.append(del);
     }
     box.append(el("div",{class:"msg"+(mine?" mine":"")},
-      mine?null:el("div",{class:"who",text:chatName(m.user_id)+(isC?" · commish":"")}),
+      mine?null:el("div",{class:"who",style:"display:flex;align-items:center;gap:6px"},avatarEl((S.standings.find(x=>x.user_id===m.user_id)||{}).avatar,chatName(m.user_id),20),el("span",{text:chatName(m.user_id)+(isC?" · commish":"")})),
       el("div",{class:"bubble",text:m.body}),when));
   }
   if(atBottom||box.dataset.first!=="0"){box.scrollTop=box.scrollHeight;box.dataset.first="0"}
