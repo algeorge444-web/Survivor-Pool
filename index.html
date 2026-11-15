@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Survivor Pool</title>
+<meta name="description" content="You’re invited! Tap to pick your team name and join the pool.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Survivor Pool">
+<meta property="og:title" content="🏆 You’re invited to the Survivor Pool">
+<meta property="og:description" content="Tap to pick your team name and join. One pick a week, last one standing wins.">
+<meta property="og:url" content="https://algeorge444-web.github.io/Survivor-Pool/">
+<meta property="og:image" content="https://algeorge444-web.github.io/Survivor-Pool/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://algeorge444-web.github.io/Survivor-Pool/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏒</text></svg>">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -11,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T16:30">
+<meta name="app-version" content="2026-11-15T18:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1332,7 +1343,7 @@ function renderCommish(v){
   const loadLink=async reset=>{const{data,error}=await sb.rpc("pool_invite_code",{p:po.id,reset:!!reset});
     if(error){linkBox.value="Couldn’t get the link";return toast(errText(error))}
     link=location.origin+location.pathname+"#join/"+data;linkBox.value=link};
-  const message=()=>`Join my survivor pool "${po.name}"! Tap the link to pick your team name and password: ${link}`;
+  const message=()=>`🏆 You’re invited to ${po.name}!\n\nTap to pick your team name and join:\n${link}`;
   textBtn.onclick=async()=>{if(!link)return;
     if(navigator.share){try{await navigator.share({title:po.name,text:message()});return}catch(e){if(e&&e.name==="AbortError")return}}
     location.href="sms:?&body="+encodeURIComponent(message())};
