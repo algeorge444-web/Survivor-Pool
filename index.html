@@ -184,6 +184,20 @@ nav a.dot::after{content:"";position:absolute;top:8px;right:-2px;width:8px;heigh
 .composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
 .composer textarea{flex:1;min-width:0;resize:none;height:42px;max-height:120px;padding:10px 12px;border:1px solid var(--line);border-radius:20px;background:var(--ice);color:var(--ink);font:inherit}
 .composer .btn{border-radius:20px}
+.journey{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 6px;margin:-4px 0 16px;scrollbar-width:none}
+.journey::-webkit-scrollbar{display:none}
+.ring{flex:none;width:50px;text-align:center;background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit}
+.ring .c{width:46px;height:46px;margin:0 auto;border-radius:50%;border:3px solid var(--line);background:var(--surface);display:grid;place-items:center;overflow:hidden;font-weight:700;font-size:.72rem;color:var(--muted)}
+.ring .c .logo{width:30px;height:30px}
+.ring.w .c{border-color:var(--good)}
+.ring.l .c{border-color:var(--red)}
+.ring.l .c .logo{opacity:.55;filter:grayscale(.6)}
+.ring.p .c{border-color:var(--blue)}
+.ring.open .c{border-style:dashed;border-color:var(--blue);color:var(--blue);font-size:1.1rem}
+.ring.miss .c{border-style:dashed;border-color:var(--red);color:var(--red);font-size:1rem}
+.ring.rbye .c{border-style:dotted}
+.ring.cur .c{box-shadow:0 0 0 3px var(--crease)}
+.ring small{display:block;margin-top:3px;font-size:.68rem;font-weight:600;color:var(--muted);white-space:nowrap}
 .rulestext{white-space:pre-wrap;margin:0;line-height:1.55}
 .ruleslist{margin:0;padding-left:20px}
 .ruleslist li{margin:6px 0}
@@ -584,7 +598,7 @@ async function loadPool(id,quiet){
   S.pool=pool;S.games=games.data||[];S.myPicks=mine.data||[];S.standings=st.data||[];S.allPicks=all.data||[];S.pending=pend.data||[];
   S.stats={};for(const t of ts.data||[])S.stats[t.team]=t;
   const weeks=weekList();
-  if(!sameWeek||S.weekIdx<0||S.weekIdx>=weeks.length){const i=weeks.findIndex(d=>!weekDone(d));S.weekIdx=i===-1?weeks.length-1:i}
+  if(!sameWeek||S.weekIdx<0||S.weekIdx>=weeks.length){const i=weeks.findIndex(d=>!weekDone(d)&&!(pool.bye_weeks||[]).includes(d));S.weekIdx=i===-1?weeks.length-1:i}
   S.loadedPool=id;
   startChat(id);
 }
@@ -619,6 +633,7 @@ function renderSaturday(v){
       el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
         el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
       puckRow(me.lives_left,S.pool.lives)));
+    renderJourney(v,me);
   }
   const weeks=weekList();
   if(!weeks.length){
@@ -841,6 +856,31 @@ function renderMine(v){
     }
   }else v.append(el("div",{class:"note",text:S.pool.ended_at?"This pool has ended. Picks are closed and the results are final.":"No games loaded yet. They’ll show up automatically."}));
   renderMyPicks(v,counts,limit);
+}
+
+// A small strip of rings, one per week: the team logo you picked, ringed green (won),
+// red (lost), blue (pending), dashed for missed or still to pick. Tap a ring to jump to that week.
+function renderJourney(v,me){
+  const weeks=weekList();if(!weeks.length)return;
+  let cur=weeks.findIndex(d=>!weekDone(d)&&!isBye(d));if(cur===-1)cur=weeks.length-1;
+  const strip=el("div",{class:"journey","aria-label":"Your picks by week"});
+  const nfl=S.pool.sport==="nfl";
+  weeks.slice(0,cur+1).forEach((d,i)=>{
+    const pk=S.myPicks.find(p=>p.game_date===d);
+    const lbl=nfl?((S.games.find(g=>g.game_date===d)||{}).week_label||"Wk").replace("Week ","Wk "):shortDate(d);
+    let cls="",inner,what;
+    if(isBye(d)){cls="rbye";inner="BYE";what="bye week"}
+    else if(pk){const r=pickResult(pk);cls=r==="w"||r==="pp"?"w":r==="l"?"l":"p";inner=teamLogo(pk.team,true);
+      what=`${teamName(pk.team)}, ${r==="w"?"won":r==="l"?"lost":r==="pp"?"postponed, counts as a win":"pending"}`}
+    else if(weekDone(d)||gamesOn(d).every(g=>locked(d,g))){cls="miss";inner="–";what="no pick"}
+    else if(me.lives_left>0&&!S.pool.ended_at){cls="open";inner="?";what="not picked yet"}
+    else{cls="";inner="–";what="no pick"}
+    const b=el("button",{class:`ring ${cls}${i===S.weekIdx?" cur":""}`,"aria-label":`${lbl}: ${what}`,
+      onclick:()=>{S.weekIdx=i;renderPool("saturday")}},el("div",{class:"c"},inner),el("small",{text:lbl}));
+    strip.append(b);
+  });
+  v.append(strip);
+  requestAnimationFrame(()=>{strip.scrollLeft=strip.scrollWidth});
 }
 
 function renderMyPicks(v,counts,limit){
