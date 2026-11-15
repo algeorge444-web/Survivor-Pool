@@ -198,6 +198,7 @@ nav a.dot::after{content:"";position:absolute;top:8px;right:-2px;width:8px;heigh
 .ring.rbye .c{border-style:dotted}
 .ring.cur .c{box-shadow:0 0 0 3px var(--crease)}
 .ring small{display:block;margin-top:3px;font-size:.68rem;font-weight:600;color:var(--muted);white-space:nowrap}
+header .ruleslink{display:inline-block;margin:-8px 0 12px;color:#fff;font-size:.88rem;font-weight:600;text-decoration:none;border:1px solid #3A5168;border-radius:99px;padding:3px 12px}
 .rulestext{white-space:pre-wrap;margin:0;line-height:1.55}
 .ruleslist{margin:0;padding-left:20px}
 .ruleslist li{margin:6px 0}
@@ -374,6 +375,7 @@ function renderHeader(tabs){
   if(S.pool&&tabs)left.append(el("a",{class:"back",href:"#home",text:"‹ My pools"}));
   left.append(el("h1",{text:S.pool&&tabs?S.pool.name:"Survivor Pools"}));
   left.append(el("p",{class:"sub",text:S.pool&&tabs?`${S.pool.ended_at?"Final · ":""}${sportOf().blurb} · ${S.pool.lives} ${S.pool.lives===1?"life":"lives"} · each team ${S.pool.max_picks_per_team===2?"twice":"once"}`:"NHL and NFL survivor pools"}));
+  if(S.pool&&tabs)left.append(el("a",{class:"ruleslink",href:`#pool/${S.pool.id}/rules`,text:"📋 Pool rules"}));
   if(S.pool&&tabs&&S.pool.friendly)left.append(el("div",{class:"friendly",text:"🏆 Playing for bragging rights"}));
   const row=el("div",{class:"hrow"},left);
   if(S.session){
@@ -610,7 +612,7 @@ async function refresh(){if(S.pool){await loadPool(S.pool.id,true);if(S.pool)ren
 
 /* ---------- Pool views ---------- */
 function renderPool(tab){
-  const tabs=[["saturday","My Picks"],["standings","Standings"],["picks","All Picks"],["chat","Chat"],["rules","Rules"]];
+  const tabs=[["saturday","My Team"],["standings","Standings"],["picks","All Picks"],["chat","Chat"]];
   if(isCommish())tabs.push(["commish","Commish"]);
   if(tab==="commish"&&!isCommish())tab="saturday";
   renderHeader(tabs);
