@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T16:10">
+<meta name="app-version" content="2026-11-15T16:30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -247,6 +247,8 @@ tr.out td{opacity:.5}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--boards);color:#fff;padding:10px 16px;border-radius:8px;font-size:.92rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;z-index:20}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+.notifybar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
+.notifybar .sm{flex:none}
 </style>
 </head>
 <body>
@@ -385,7 +387,7 @@ function renderHeader(tabs){
   if(S.session){
     const meta=S.session.user.user_metadata||{};
     row.append(el("div",{class:"acct"},el("div",{text:S.team||meta.display_name||S.session.user.email}),
-      el("button",{text:"Sign out",onclick:async()=>{await sb.auth.signOut();location.hash="#home"}})));
+      el("button",{text:"Sign out",onclick:async()=>{await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}})));
   }
   h.append(row);
   if(tabs){
@@ -1197,6 +1199,48 @@ function renderChatMessages(){
   }
   if(atBottom||box.dataset.first!=="0"){box.scrollTop=box.scrollHeight;box.dataset.first="0"}
 }
+
+/* ---------- Chat notifications ---------- */
+const pushSupported=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window&&location.protocol==="https:";
+const b64uBytes=s=>{const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+async function currentPushSub(){if(!pushSupported())return null;try{const r=await navigator.serviceWorker.ready;return await r.pushManager.getSubscription()}catch{return null}}
+async function savePushSub(sub){const j=sub.toJSON();return sb.from("push_subs").upsert({endpoint:j.endpoint,user_id:uid(),p256dh:j.keys.p256dh,auth:j.keys.auth})}
+async function enablePush(){
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted")throw{message:"Notifications weren’t allowed. You can turn them on in your phone’s settings."};
+  const{data:key,error}=await sb.rpc("push_public_key");if(error||!key)throw{message:"Couldn’t turn on notifications right now."};
+  const r=await navigator.serviceWorker.ready;
+  let sub=await r.pushManager.getSubscription();
+  if(!sub)sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(key)});
+  const{error:se}=await savePushSub(sub);if(se)throw se;
+}
+async function disablePush(){const sub=await currentPushSub();if(!sub)return;
+  await sb.from("push_subs").delete().eq("endpoint",sub.endpoint);try{await sub.unsubscribe()}catch{}}
+function notifyBar(){
+  const bar=el("div",{class:"notifybar"});
+  const paint=async()=>{
+    bar.replaceChildren();
+    const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+    if(!pushSupported()){
+      if(iOS&&!isInstalled())bar.append(el("span",{text:"🔔 Want a notification when someone chats? Add this app to your Home Screen, open it from there, and turn notifications on here."}));
+      else return bar.remove();
+      return;
+    }
+    if(Notification.permission==="denied"){bar.append(el("span",{text:"🔕 Notifications are blocked for this app. Turn them on in your phone’s settings to get chat alerts."}));return}
+    const sub=Notification.permission==="granted"?await currentPushSub():null;
+    if(sub){savePushSub(sub);
+      const off=el("button",{class:"sm",text:"Turn off"});
+      off.onclick=async()=>{off.disabled=true;await disablePush();toast("Chat notifications off");paint()};
+      bar.append(el("span",{text:"🔔 Chat notifications are on"}),off);
+    }else{
+      const on=el("button",{class:"sm",style:"background:var(--blue);color:#fff;border-color:var(--blue)",text:"Turn on"});
+      on.onclick=async()=>{on.disabled=true;try{await enablePush();toast("You’ll get a notification when someone chats")}catch(e){toast(errText(e))}paint()};
+      bar.append(el("span",{text:"🔔 Get a notification when someone chats"}),on);
+    }
+  };
+  paint();return bar;
+}
+
 function renderChat(v){
   const msgs=el("div",{class:"msgs",id:"msgs"});
   const ta=el("textarea",{placeholder:"Message the pool…",maxlength:"500","aria-label":"Message"});
@@ -1215,7 +1259,7 @@ function renderChat(v){
   send.onclick=go;
   ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){e.preventDefault();go()}});
   ta.addEventListener("input",()=>{ta.style.height="auto";ta.style.height=Math.min(120,ta.scrollHeight)+"px"});
-  v.append(el("div",{class:"chat"},msgs,el("div",{class:"composer"},ta,send)));
+  v.append(notifyBar(),el("div",{class:"chat"},msgs,el("div",{class:"composer"},ta,send)));
   renderChatMessages();markChatRead();
 }
 
