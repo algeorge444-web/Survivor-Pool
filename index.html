@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T16:00">
+<meta name="app-version" content="2026-11-15T16:10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -556,7 +556,7 @@ async function renderJoin(code,mode,note){
 
 /* ---------- Home ---------- */
 async function loadHome(){
-  const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,lives,max_picks_per_team").order("created_at"),
+  const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
     sb.from("profiles").select("display_name").eq("id",uid()).maybeSingle()]);
   S.invites=inv.data||[];S.pools=pools.data||[];
   const pend=(S.session.user.user_metadata||{}).pending_pool;
@@ -622,7 +622,7 @@ function renderHome(){
       el("div",{class:"acts",style:"justify-content:flex-end"},el("span",{class:"badge",text:SPORTS[p.sport||"nhl"].label}),
         p.ended_at?el("span",{class:"badge",text:"Final"}):null,
         p.friendly?el("span",{class:"badge friendly-b",text:"🏆 Friendly"}):null,
-        p.commissioner_id===uid()?el("span",{class:"badge",text:"Commissioner"}):null)));
+        p.commissioner_id===uid()?el("span",{class:"badge",text:"Commissioner"}):(p.co_commissioners||[]).includes(uid())?el("span",{class:"badge",text:"Co-commissioner"}):null)));
   }
   const name=el("input",{type:"text",placeholder:"e.g. Sunday Survivors",maxlength:"60","aria-label":"Survivor pool name"});
   const sport=el("select",{"aria-label":"Sport"},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
@@ -651,7 +651,7 @@ function renderHome(){
 async function loadPool(id,quiet){
   const{data:pool,error}=await sb.from("pools").select("*").eq("id",id).maybeSingle();
   if(error||!pool){S.pool=null;S.loadedPool=null;if(!quiet)toast("You don’t have access to that pool.");return}
-  const isC=pool.commissioner_id===uid();
+  const isC=pool.commissioner_id===uid()||(pool.co_commissioners||[]).includes(uid());
   const [games,mine,st,all,pend,ts]=await Promise.all([
     sb.from("games").select("*").eq("sport",pool.sport||"nhl").gte("game_date",pool.start_date).order("game_date").order("start_time"),
     sb.from("picks").select("game_date,team,game_id").eq("pool_id",id).eq("user_id",uid()),
@@ -671,7 +671,9 @@ async function loadPool(id,quiet){
 const slateTitle=d=>{if(S.pool&&S.pool.sport==="nfl"){const g=S.games.find(x=>x.game_date===d);return `${(g&&g.week_label)||"Week"} · ${shortDate(d)}`}return fmtDate(d)};
 const endedDay=()=>S.pool&&S.pool.ended_at?new Date(S.pool.ended_at).toLocaleDateString("en-CA",{timeZone:"America/New_York"}):null;
 const weekList=()=>[...new Set(S.games.map(g=>g.game_date))].filter(d=>!S.pool||((!S.pool.end_date||d<=S.pool.end_date)&&(!endedDay()||d<=endedDay()))).sort();
-const isCommish=()=>S.pool&&S.pool.commissioner_id===uid();
+const isOwner=()=>S.pool&&S.pool.commissioner_id===uid();
+const isCoOf=(po,u)=>!!po&&(po.co_commissioners||[]).includes(u);
+const isCommish=()=>isOwner()||isCoOf(S.pool,uid());
 async function refresh(){if(S.pool){await loadPool(S.pool.id,true);if(S.pool)renderPool(parseRoute().tab)}}
 
 /* ---------- Pool views ---------- */
@@ -1180,7 +1182,7 @@ function renderChatMessages(){
     const day=t.toLocaleDateString([], {weekday:"long",month:"short",day:"numeric"});
     if(day!==lastDay){box.append(el("div",{class:"daysep",text:day}));lastDay=day}
     const mine=m.user_id===uid();
-    const isC=S.pool.commissioner_id===m.user_id;
+    const isC=S.pool.commissioner_id===m.user_id||isCoOf(S.pool,m.user_id);
     const when=el("div",{class:"when",text:t.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})});
     if(mine||isCommish()){
       const del=el("button",{text:"Delete"});
@@ -1323,22 +1325,31 @@ function renderCommish(v){
   v.append(inv);
 
   // Players + strikes
-  const pl=el("div",{class:"panel"},el("h3",{text:"Players and strikes"}));
+  const pl=el("div",{class:"panel"},el("h3",{text:"Players and strikes"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:isOwner()?"Tap “Make co-commissioner” to share the Commish tab with someone. They can do everything here except delete the pool or change co-commissioners.":"You’re a co-commissioner. You can do everything here except delete the pool or change co-commissioners."}));
   for(const r of [...S.standings].sort((a,b)=>(a.display_name||"").localeCompare(b.display_name||""))){
     const adjust=async delta=>{const{error}=await sb.rpc("adjust_strike",{p:po.id,u:r.user_id,delta});if(error)return toast(errText(error));toast(delta>0?"Strike added":"Strike given back");refresh()};
     const add=el("button",{class:"sm",text:"Add strike",onclick:()=>adjust(1)});
     const back=el("button",{class:"sm",text:"Give strike back",onclick:()=>adjust(-1)});
     back.disabled=r.strikes<=0;
     const acts=el("div",{class:"acts"},add,back);
-    if(r.user_id!==uid()){
+    const rOwner=r.user_id===po.commissioner_id,rCo=isCoOf(po,r.user_id);
+    if(isOwner()&&r.user_id!==uid()){
+      const co=el("button",{class:"sm",text:rCo?"Remove co-commissioner":"Make co-commissioner"});
+      co.onclick=async()=>{co.disabled=true;const{error}=await sb.rpc("set_co_commissioner",{p:po.id,u:r.user_id,on_:!rCo});
+        if(error){co.disabled=false;return toast(errText(error))}
+        toast(rCo?`${r.display_name} is no longer a co-commissioner`:`${r.display_name} is now a co-commissioner`);refresh()};
+      acts.append(co);
+    }
+    if(r.user_id!==uid()&&!rOwner&&(isOwner()||!rCo)){
       const rm=el("button",{class:"sm danger",text:"Remove player"});
       rm.onclick=async()=>{if(rm.dataset.armed!=="1"){rm.dataset.armed="1";rm.textContent="Tap again to remove";return}
         const{error}=await sb.rpc("remove_member",{p:po.id,u:r.user_id});if(error)return toast(errText(error));toast("Player removed");refresh()};
       acts.append(rm);
     }
-    const parts=[`${r.losses} from losses`];if(r.missed)parts.push(`${r.missed} missed`);if(r.adjust)parts.push(`${r.adjust>0?"+":""}${r.adjust} by you`);if(r.revived)parts.push(`${r.revived} given back (everyone out)`);
+    const parts=[`${r.losses} from losses`];if(r.missed)parts.push(`${r.missed} missed`);if(r.adjust)parts.push(`${r.adjust>0?"+":""}${r.adjust} by commish`);if(r.revived)parts.push(`${r.revived} given back (everyone out)`);
     pl.append(el("div",{class:"prow"},
-      el("div",{class:"top"},el("strong",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")}),puckRow(r.lives_left,po.lives)),
+      el("div",{class:"top"},el("strong",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(rOwner?" · commissioner":rCo?" · co-commissioner":"")}),puckRow(r.lives_left,po.lives)),
       el("div",{class:"detail",text:`${r.strikes} strike${r.strikes===1?"":"s"}: ${parts.join(", ")} · ${r.lives_left<=0?"eliminated":`${r.lives_left} left`}`}),acts));
   }
   v.append(pl);
@@ -1388,7 +1399,7 @@ function renderCommish(v){
       ?`Ended ${new Date(po.ended_at).toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"})}. Picks are closed and everyone sees the final results. You can reopen it if you ended it by mistake.`
       :"Closes all picks, freezes the standings, and shows the winner to everyone. Weeks after today won’t count. Players can still see their history."}),
     el("div",{class:"acts"},endBtn)));
-  v.append(el("div",{class:"panel"},el("h3",{text:"Delete the pool"}),
+  if(isOwner())v.append(el("div",{class:"panel"},el("h3",{text:"Delete the pool"}),
     el("p",{class:"meta",style:"margin:0 0 12px",text:"Permanently removes the pool, its players’ picks and its history for everyone. This can’t be undone."}),
     el("div",{class:"acts"},del)));
 }
