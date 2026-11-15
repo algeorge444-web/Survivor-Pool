@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T18:35">
+<meta name="app-version" content="2026-11-15T18:50">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -260,6 +260,9 @@ tr.out td{opacity:.5}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 .notifybar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
 .notifybar .sm{flex:none}
+.remrow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;cursor:pointer}
+.remrow input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--blue)}
+.remrow span{display:flex;flex-direction:column}
 </style>
 </head>
 <body>
@@ -398,7 +401,7 @@ function renderHeader(tabs){
   if(S.session){
     const meta=S.session.user.user_metadata||{};
     row.append(el("div",{class:"acct"},el("div",{text:S.team||meta.display_name||S.session.user.email}),
-      el("button",{text:"Sign out",onclick:async()=>{await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}})));
+      el("button",{text:"Sign out",onclick:async()=>{S.prefs=null;await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}})));
   }
   h.append(row);
   if(tabs){
@@ -726,7 +729,7 @@ function renderSaturday(v){
   if(!weeks.length){
     if(S.pool.ended_at){v.append(el("div",{class:"note",text:"This pool has ended. Picks are closed and the results are final."}));return}
     v.append(el("div",{class:"note"},el("strong",{text:S.pool.sport==="nfl"?"No NFL games yet. ":"No Saturday games yet. "}),S.pool.sport==="nfl"?"Games load automatically once the NFL schedule syncs. Odds appear during the week.":"Games load automatically once the NHL schedule syncs. Odds appear a few days before puck drop."));
-    renderMyPicks(v,counts,limit);return;
+    renderMyPicks(v,counts,limit);v.append(remindersPanel());return;
   }
   const d=weeks[S.weekIdx];
   const prev=el("button",{"aria-label":`Previous ${sportOf().slate}`,text:"‹",onclick:()=>{S.weekIdx--;renderPool("saturday")}});prev.disabled=S.weekIdx<=0;
@@ -811,6 +814,7 @@ function renderSaturday(v){
   }
   renderExperts(v,d);
   renderMyPicks(v,counts,limit);
+  v.append(remindersPanel());
 }
 
 /* ---------- Matchup notes, pick of the week, expert links ---------- */
@@ -1232,9 +1236,16 @@ async function enablePush(){
 }
 async function disablePush(){const sub=await currentPushSub();if(!sub)return;
   await sb.from("push_subs").delete().eq("endpoint",sub.endpoint);try{await sub.unsubscribe()}catch{}}
+async function myPrefs(){
+  if(!S.prefs){const{data}=await sb.from("profiles").select("remind_email,remind_push,chat_push,email").eq("id",uid()).maybeSingle();
+    S.prefs=data||{remind_email:true,remind_push:true,chat_push:true}}
+  return S.prefs;
+}
+async function setPref(k,v){const{error}=await sb.from("profiles").update({[k]:v}).eq("id",uid());if(error)throw error;if(S.prefs)S.prefs[k]=v}
 function notifyBar(){
   const bar=el("div",{class:"notifybar"});
   const paint=async()=>{
+    const prefs=await myPrefs();
     bar.replaceChildren();
     const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
     if(!pushSupported()){
@@ -1244,17 +1255,44 @@ function notifyBar(){
     }
     if(Notification.permission==="denied"){bar.append(el("span",{text:"🔕 Notifications are blocked for this app. Turn them on in your phone’s settings to get chat alerts."}));return}
     const sub=Notification.permission==="granted"?await currentPushSub():null;
-    if(sub){savePushSub(sub);
+    if(sub)savePushSub(sub);
+    if(sub&&prefs.chat_push){
       const off=el("button",{class:"sm",text:"Turn off"});
-      off.onclick=async()=>{off.disabled=true;await disablePush();toast("Chat notifications off");paint()};
+      off.onclick=async()=>{off.disabled=true;try{await setPref("chat_push",false);toast("Chat notifications off")}catch(e){toast(errText(e))}paint()};
       bar.append(el("span",{text:"🔔 Chat notifications are on"}),off);
     }else{
       const on=el("button",{class:"sm",style:"background:var(--blue);color:#fff;border-color:var(--blue)",text:"Turn on"});
-      on.onclick=async()=>{on.disabled=true;try{await enablePush();toast("You’ll get a notification when someone chats")}catch(e){toast(errText(e))}paint()};
+      on.onclick=async()=>{on.disabled=true;try{if(!sub)await enablePush();await setPref("chat_push",true);toast("You’ll get a notification when someone chats")}catch(e){toast(errText(e))}paint()};
       bar.append(el("span",{text:"🔔 Get a notification when someone chats"}),on);
     }
   };
   paint();return bar;
+}
+function remindersPanel(){
+  const p=el("div",{class:"panel"},el("h3",{text:"⏰ Pick reminders"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:"If you haven’t picked yet, we’ll remind you 3 hours before picks lock."}));
+  const body=el("div");p.append(body);
+  const row=(label,hint,checked,onchange)=>{const cb=el("input",{type:"checkbox"});cb.checked=checked;
+    cb.onchange=async()=>{cb.disabled=true;try{await onchange(cb.checked)}catch(e){cb.checked=!cb.checked;toast(errText(e))}cb.disabled=false};
+    return el("label",{class:"remrow"},cb,el("span",{},el("strong",{text:label}),hint?el("small",{class:"meta",text:hint}):""))};
+  (async()=>{
+    const prefs=await myPrefs();
+    body.replaceChildren(row("Email me",prefs.email||"",prefs.remind_email,async on=>{await setPref("remind_email",on);toast(on?"Email reminders on":"Email reminders off")}));
+    let phoneHint="",phoneOK=true;
+    const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+    if(!pushSupported()){phoneOK=false;phoneHint=iOS&&!isInstalled()?"On iPhone, add the app to your Home Screen and open it from there first.":"This browser can’t show notifications."}
+    else if(Notification.permission==="denied"){phoneOK=false;phoneHint="Notifications are blocked. Turn them on in your phone’s settings."}
+    const sub=phoneOK&&Notification.permission==="granted"?await currentPushSub():null;
+    if(phoneOK&&!sub)phoneHint="Tap to allow notifications on this phone.";
+    const r=row("Notify my phone",phoneHint,!!(prefs.remind_push&&sub),async on=>{
+      if(on&&!sub){await enablePush()}
+      await setPref("remind_push",on);toast(on?"Phone reminders on":"Phone reminders off");
+      body.replaceChildren();p.replaceWith(remindersPanel());
+    });
+    if(!phoneOK)r.querySelector("input").disabled=true;
+    body.append(r);
+  })();
+  return p;
 }
 
 function renderChat(v){
