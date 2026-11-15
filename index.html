@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T19:40">
+<meta name="app-version" content="2026-11-15T20:30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -263,6 +263,7 @@ tr.out td{opacity:.5}
 .remrow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;cursor:pointer}
 .remrow input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--blue)}
 .remrow span{display:flex;flex-direction:column}
+.renamebtn{background:none;border:0;padding:0;margin:2px 0;color:var(--blue);font:inherit;font-size:.85rem;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -654,21 +655,25 @@ function renderHome(){
   const name=el("input",{type:"text",placeholder:"e.g. Sunday Survivors",maxlength:"60","aria-label":"Survivor pool name"});
   const sport=el("select",{"aria-label":"Sport"},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
   const btn=el("button",{class:"btn",text:"Create pool"});
-  btn.onclick=async()=>{const n=name.value.trim();if(!n)return name.focus();btn.disabled=true;
-    const{data,error}=await sb.rpc("create_pool",{p_name:n,p_sport:sport.value});
+  const poolTeam=el("input",{type:"text",maxlength:"30",value:S.team||"","aria-label":"Your team name in this pool"});
+  btn.onclick=async()=>{const n=name.value.trim();if(!n)return name.focus();
+    const t=poolTeam.value.trim();if(t&&(t.length<2||t.includes("@")))return toast("Team names need 2 to 30 characters, with no @.");
+    btn.disabled=true;
+    const{data,error}=await sb.rpc("create_pool",{p_name:n,p_sport:sport.value,p_team:t&&t!==S.team?t:null});
     if(error){toast(errText(error));btn.disabled=false;return}
     toast("Pool created. Invite your players next.");location.hash=`#pool/${data}/commish`};
   app.append(el("div",{class:"panel",style:"margin-top:18px"},el("h3",{text:"Start a new pool"}),
     el("p",{class:"meta",style:"margin:0 0 12px",text:"You’ll be the commissioner. You can change the rules and invite people by email."}),
     el("label",{class:"field"},el("span",{text:"Sport"}),sport),
+    el("label",{class:"field"},el("span",{text:"Your team name in this pool"}),poolTeam),
     el("label",{class:"field"},el("span",{text:"Survivor pool name"}),el("div",{class:"row"},name,btn))));
   const tn=el("input",{type:"text",maxlength:"30",value:S.team,"aria-label":"Team name"});
   const tb=el("button",{class:"sm",text:"Save"});
   tb.onclick=async()=>{const t=tn.value.trim();if(!t||t===S.team)return;if(t.includes("@"))return toast("Team names can’t include @.");tb.disabled=true;
     const{error}=await sb.rpc("set_team_name",{p_name:t});tb.disabled=false;
     if(error)return toast(errText(error));S.team=t;await sb.auth.updateUser({data:{display_name:t}});renderHeader(null);toast("Team name saved")};
-  app.append(el("div",{class:"panel"},el("h3",{text:"Your team name"}),
-    el("p",{class:"meta",style:"margin:0 0 12px",text:"This is what other players see in your pools."}),
+  app.append(el("div",{class:"panel"},el("h3",{text:"Your default team name"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"Used when you join a pool. You can pick a different name inside each pool, on the My Team tab, until your first pick locks."}),
     el("div",{class:"row"},tn,tb)));
   const ib=installButton();if(ib)app.append(ib);
   offerInstall();
@@ -727,7 +732,7 @@ function renderSaturday(v){
   const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
   if(me){
     v.append(el("div",{class:"me"},
-      el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
+      el("div",{},whoBlock(me),
         el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
       puckRow(me.lives_left,S.pool.lives)));
   }
@@ -916,13 +921,36 @@ function renderExperts(v,d){
   v.append(panel);
 }
 
+// Team name for this pool: can be changed until your first pick locks.
+const nameLocked=()=>S.myPicks.some(p=>{const g=S.games.find(x=>x.id===p.game_id);return !g||locked(p.game_date,g)});
+function whoBlock(me){
+  const who=el("div",{class:"who",text:me.display_name||"You"});
+  if(nameLocked()||(S.pool&&S.pool.ended_at))return who;
+  const edit=el("button",{class:"renamebtn",text:"✏️ Change team name","aria-label":"Change team name"});
+  const wrap=el("div",{},who,edit);
+  edit.onclick=()=>{
+    const inp=el("input",{type:"text",maxlength:"30",value:me.display_name||"","aria-label":"Team name"});
+    const save=el("button",{class:"sm",text:"Save"}),cancel=el("button",{class:"sm",text:"Cancel"});
+    const go=async()=>{const t=inp.value.trim();if(t===(me.display_name||""))return refresh();
+      if(t.length<2||t.includes("@"))return toast("Team names need 2 to 30 characters, with no @.");
+      save.disabled=true;const{error}=await sb.rpc("set_pool_team_name",{p:S.pool.id,p_name:t});
+      if(error){save.disabled=false;return toast(errText(error))}
+      toast("Team name saved");refresh()};
+    save.onclick=go;cancel.onclick=()=>refresh();inp.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+    wrap.replaceChildren(el("div",{class:"row",style:"gap:6px"},inp,save,cancel),
+      el("small",{class:"meta",style:"display:block;margin-top:4px",text:"You can change this until your first pick locks."}));
+    inp.focus();inp.select();
+  };
+  return wrap;
+}
+
 // "Your Picks": the first page players see. This week's pick at a glance, lives, and history.
 function renderMine(v){
   const me=S.standings.find(r=>r.user_id===uid());
   const limit=S.pool.max_picks_per_team;
   const counts={};for(const p of S.myPicks)counts[p.team]=(counts[p.team]||0)+1;
   if(me)v.append(el("div",{class:"me"},
-    el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
+    el("div",{},whoBlock(me),
       el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
     puckRow(me.lives_left,S.pool.lives)));
   renderWinner(v);
