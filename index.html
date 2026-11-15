@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T21:10">
+<meta name="app-version" content="2026-11-15T21:40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -274,6 +274,8 @@ tr.out td{opacity:.5}
 .avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px}
 .avpick{background:none;border:3px solid transparent;border-radius:50%;padding:2px;cursor:pointer;width:66px;height:66px;display:flex;align-items:center;justify-content:center}
 .avpick.on{border-color:var(--blue)}
+.showpw{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;font-size:.9rem;color:var(--muted);cursor:pointer}
+.showpw input{width:18px;height:18px;accent-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -452,7 +454,9 @@ function renderAuth(){
   const busy=async fn=>{btn.disabled=true;try{await fn()}catch(e){S.authMsg={text:errText(e)};renderAuth()}btn.disabled=false};
   const redirect=location.origin+location.pathname;
   if(m==="signin"){
-    p.append(el("h3",{text:"Sign in"}),msg,field("Email",email),field("Password",pw),btn);
+    p.append(el("div",{style:"text-align:center;margin-bottom:6px"},el("img",{src:"icon-192.png",alt:"Survivor Pool",style:"width:88px;height:88px;border-radius:20px"}),
+        el("h3",{style:"margin:10px 0 2px",text:"Welcome back"}),el("p",{class:"meta",style:"margin:0 0 8px",text:"Sign in to make your picks"})),
+      msg,field("Email",email),field("Password",pw),showPw(pw),btn);
     btn.textContent="Sign in";
     btn.onclick=()=>busy(async()=>{
       if(!email.value.trim()||!pw.value)throw{message:"Enter your email and password."};
@@ -620,9 +624,23 @@ const AV_BY={};for(const k in AVATARS)for(const a of AVATARS[k])AV_BY[a[0]]=a;
 const avSvg=(a,size)=>`<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="${a[2]}"/>${a[3]}</svg>`;
 function avatarEl(key,name,size=36){
   const a=AV_BY[key],n=el("span",{class:"av",style:`width:${size}px;height:${size}px`});
+  const initial=()=>{n.replaceChildren();n.classList.add("av-i");n.style.fontSize=Math.round(size*.45)+"px";n.textContent=(String(name||"?").trim().charAt(0)||"?").toUpperCase()};
   if(a)n.innerHTML=avSvg(a,size);
+  else if(/^https:\/\//.test(key||"")){const im=el("img",{src:key,alt:"",width:size,height:size,loading:"lazy",style:"width:100%;height:100%;object-fit:cover;display:block"});im.onerror=initial;n.append(im)}
   else{n.classList.add("av-i");n.style.fontSize=Math.round(size*.45)+"px";n.textContent=(String(name||"?").trim().charAt(0)||"?").toUpperCase()}
   return n;
+}
+// "Show password" checkbox for any password boxes.
+function showPw(...inputs){const cb=el("input",{type:"checkbox"});cb.onchange=()=>{for(const i of inputs)i.type=cb.checked?"text":"password"};
+  return el("label",{class:"showpw"},cb,el("span",{text:"Show password"}))}
+// Shrinks a chosen photo to a small square before uploading.
+async function squarePhoto(file,size=256){
+  const url=URL.createObjectURL(file);
+  try{const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no({message:"That file isn’t a photo this app can read. Try a JPG or PNG."});i.src=url});
+    const side=Math.min(img.naturalWidth,img.naturalHeight),c=document.createElement("canvas");c.width=c.height=size;
+    c.getContext("2d").drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,size,size);
+    return await new Promise(ok=>c.toBlob(ok,"image/jpeg",.85));
+  }finally{URL.revokeObjectURL(url)}
 }
 const myAvatar=()=>{if(S.avatar!==undefined)return S.avatar;const r=(S.standings||[]).find(x=>x.user_id===uid());return r?r.avatar:null};
 
@@ -638,12 +656,25 @@ function renderProfile(){
     el("p",{class:"meta",style:"margin:0 0 10px",text:"Tap one to use it. Everyone in your pools sees it next to your name."}));
   const group=(title,list)=>{const g=el("div",{class:"avgrid"});
     for(const a of list){const b=el("button",{class:"avpick"+(S.avatar===a[0]?" on":""),"aria-label":a[1],title:a[1]});b.innerHTML=avSvg(a,56);
-      b.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:a[0]}).eq("id",uid());if(error)return toast(errText(error));
+      b.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:a[0],avatar_url:null}).eq("id",uid());if(error)return toast(errText(error));
         S.avatar=a[0];toast("Avatar saved");renderHeader(null);renderProfile()};g.append(b)}
     pick.append(el("div",{class:"avhead",text:title}),g)};
+  pick.querySelector("p").textContent="Upload your own photo or tap an avatar. Everyone in your pools sees it next to your name.";
+  const file=el("input",{type:"file",accept:"image/*",hidden:true});
+  const up=el("button",{class:"btn",style:"background:var(--boards)",text:"📷 Upload my own photo"});
+  up.onclick=()=>file.click();
+  file.onchange=async()=>{const f=file.files&&file.files[0];if(!f)return;up.disabled=true;up.textContent="Uploading…";
+    try{const blob=await squarePhoto(f);if(!blob)throw{message:"Couldn’t read that photo. Try another one."};
+      const path=`${uid()}/avatar.jpg`;
+      const{error}=await sb.storage.from("avatars").upload(path,blob,{upsert:true,contentType:"image/jpeg",cacheControl:"3600"});if(error)throw error;
+      const url=sb.storage.from("avatars").getPublicUrl(path).data.publicUrl+"?v="+Date.now();
+      const{error:pe}=await sb.from("profiles").update({avatar_url:url}).eq("id",uid());if(pe)throw pe;
+      S.avatar=url;toast("Photo saved");renderHeader(null);renderProfile();
+    }catch(e){up.disabled=false;up.textContent="📷 Upload my own photo";toast(errText(e))}};
+  pick.append(up,file,el("small",{class:"meta",style:"display:block;margin:6px 0 4px",text:"Pick a photo from your phone or computer. It’s cropped to a circle."}));
   group("🏒 Hockey",AVATARS.hockey);group("🏈 Football",AVATARS.football);
   if(S.avatar){const none=el("button",{class:"sm",style:"margin-top:12px",text:"Use my initial instead"});
-    none.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:null}).eq("id",uid());if(error)return toast(errText(error));S.avatar=null;renderHeader(null);renderProfile()};pick.append(none)}
+    none.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:null,avatar_url:null}).eq("id",uid());if(error)return toast(errText(error));S.avatar=null;renderHeader(null);renderProfile()};pick.append(none)}
   // Names
   const fn=el("input",{type:"text",maxlength:"20",autocomplete:"given-name",value:S.first||"",placeholder:"First name"});
   const tn=el("input",{type:"text",maxlength:"30",value:S.team||""});
@@ -659,17 +690,32 @@ function renderProfile(){
     el("label",{class:"field"},el("span",{text:"First name"}),fn,el("small",{class:"meta",style:"display:block;margin-top:4px",text:"Shown in brackets after your team name."})),
     el("label",{class:"field"},el("span",{text:"Default team name"}),tn,el("small",{class:"meta",style:"display:block;margin-top:4px",text:"Used when you join a pool. You can use a different name inside each pool, on the My Team tab, until your first pick locks."})),nb);
   // Sign-in
+  const cur=el("input",{type:"password",autocomplete:"current-password"});
   const p1=el("input",{type:"password",autocomplete:"new-password",minlength:"8"}),p2=el("input",{type:"password",autocomplete:"new-password",minlength:"8"});
   const pb=el("button",{class:"btn",text:"Change password"});
-  pb.onclick=async()=>{if(p1.value.length<8)return toast("Use at least 8 characters for your password.");
-    if(p1.value!==p2.value)return toast("The two passwords don’t match.");
-    pb.disabled=true;const{error}=await sb.auth.updateUser({password:p1.value});pb.disabled=false;
-    if(error)return toast(errText(error));p1.value=p2.value="";toast("Password changed")};
+  pb.onclick=async()=>{if(!cur.value)return toast("Enter your current password.");
+    if(p1.value.length<8)return toast("Use at least 8 characters for your new password.");
+    if(p1.value!==p2.value)return toast("The two new passwords don’t match.");
+    pb.disabled=true;
+    const{error:ce}=await sb.auth.signInWithPassword({email,password:cur.value});
+    if(ce){pb.disabled=false;return toast("Your current password isn’t right.")}
+    const{error}=await sb.auth.updateUser({password:p1.value});pb.disabled=false;
+    if(error)return toast(errText(error));cur.value=p1.value=p2.value="";toast("Password changed")};
+  const em=el("input",{type:"email",value:email,autocomplete:"email"});
+  const eb=el("button",{class:"sm",text:"Change email"});
+  const enote=el("p",{class:"ok",hidden:true});
+  eb.onclick=async()=>{const n=em.value.trim().toLowerCase();if(!n||n===email.toLowerCase())return toast("Type the new email first.");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(n))return toast("Enter a valid email address.");
+    eb.disabled=true;const{error}=await sb.auth.updateUser({email:n},{emailRedirectTo:location.origin+location.pathname});eb.disabled=false;
+    if(error)return toast(errText(error));
+    enote.textContent=`Almost done. We sent a confirmation link to ${n}. Your login changes once you tap it. Until then, keep signing in with ${email}.`;enote.hidden=false};
   const out=el("button",{class:"sm",text:"Sign out",onclick:async()=>{S.prefs=null;S.avatar=undefined;await disablePush().catch(()=>{});await sb.auth.signOut();location.hash="#home"}});
-  const login=el("div",{class:"panel"},el("h3",{text:"Sign-in details"}),
-    el("label",{class:"field"},el("span",{text:"Login (email)"}),el("input",{type:"email",value:email,readonly:true,autocomplete:"username"})),
+  const login=el("div",{class:"panel"},el("h3",{text:"Login and password"}),
+    el("label",{class:"field"},el("span",{text:"Login (email)"}),el("div",{class:"row"},em,eb)),enote,
+    el("div",{class:"avhead",style:"margin-top:18px",text:"Change password"}),
+    el("label",{class:"field"},el("span",{text:"Current password"}),cur),
     el("label",{class:"field"},el("span",{text:"New password (8+ characters)"}),p1),
-    el("label",{class:"field"},el("span",{text:"Type the new password again"}),p2),pb,
+    el("label",{class:"field"},el("span",{text:"New password again"}),p2),showPw(cur,p1,p2),pb,
     el("div",{style:"margin-top:18px;padding-top:14px;border-top:1px solid var(--line)"},out));
   app.append(top,pick,names,login);
 }
@@ -677,7 +723,7 @@ function renderProfile(){
 /* ---------- Home ---------- */
 async function loadHome(){
   const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
-    sb.from("profiles").select("display_name,first_name,avatar").eq("id",uid()).maybeSingle()]);
+    sb.from("profiles").select("display_name,first_name,avatar,avatar_url").eq("id",uid()).maybeSingle()]);
   S.invites=inv.data||[];S.pools=pools.data||[];
   if(S.invites.length){ // invited by email: join automatically, no extra tap
     let joined=null,name="";
@@ -692,7 +738,7 @@ async function loadHome(){
       if(!error&&id){toast("Your pool is ready. Invite your players next.");location.hash=`#pool/${id}/commish`;return}
     }
   }
-  S.first=(me.data&&me.data.first_name)||"";S.avatar=(me.data&&me.data.avatar)||null;
+  S.first=(me.data&&me.data.first_name)||"";S.avatar=(me.data&&(me.data.avatar_url||me.data.avatar))||null;
   if(me.data&&me.data.display_name&&me.data.display_name!==S.team){S.team=me.data.display_name;renderHeader(null)}
 }
 
