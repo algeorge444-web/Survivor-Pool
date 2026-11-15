@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T20:30">
+<meta name="app-version" content="2026-11-15T20:45">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -432,6 +432,7 @@ function renderAuth(){
   const msg=S.authMsg?el("p",{class:S.authMsg.ok?"ok":"err",text:S.authMsg.text}):"";
   const field=(label,input,hint)=>el("label",{class:"field"},el("span",{text:label}),input,hint?el("small",{class:"meta",style:"display:block;margin-top:4px",text:hint}):null);
   const name=el("input",{type:"text",autocomplete:"username",maxlength:"30"});
+  const first=el("input",{type:"text",autocomplete:"given-name",maxlength:"20"});
   const email=el("input",{type:"email",autocomplete:"email"});
   const pw=el("input",{type:"password",autocomplete:m==="signup"?"new-password":"current-password",minlength:"8"});
   const poolName=el("input",{type:"text",maxlength:"60",placeholder:"e.g. Sunday Survivors"});
@@ -459,6 +460,7 @@ function renderAuth(){
     p.append(el("h3",{text:"Create a commissioner account"}),
       el("p",{class:"meta",style:"margin:0 0 14px",text:"You’ll set up your pool and invite your players by email. Players don’t need this screen. They join from their invite."}),
       msg,
+      field("First name",first,"Shown in brackets after your team name"),
       field("Team name",name,"What everyone in your pools sees"),
       field("Email",email,"You’ll sign in with this"),
       field("Password (8+ characters)",pw),
@@ -467,6 +469,7 @@ function renderAuth(){
     btn.textContent="Create account and pool";
     btn.onclick=()=>busy(async()=>{
       const team=name.value.trim(),pool=poolName.value.trim();
+      if(!cleanFirst(first.value))throw{message:"Enter your first name."};
       if(team.length<2||team.length>30)throw{message:"Team names need 2 to 30 characters."};
       if(team.includes("@"))throw{message:"Team names can’t include @."};
       if(!email.value.trim())throw{message:"Enter your email."};
@@ -475,7 +478,7 @@ function renderAuth(){
       const{data:free}=await sb.rpc("team_name_available",{p_name:team});
       if(free===false)throw{message:"That team name is taken. Try another."};
       const{data,error}=await sb.auth.signUp({email:email.value.trim(),password:pw.value,
-        options:{data:{display_name:team,pending_pool:{name:pool,sport:sport.value}},emailRedirectTo:redirect}});
+        options:{data:{display_name:team,first_name:cleanFirst(first.value),pending_pool:{name:pool,sport:sport.value}},emailRedirectTo:redirect}});
       if(error)throw error;
       if(!data.session){S.authMode="signin";S.authMsg={ok:true,text:"Check your email to confirm your account, then sign in. Your pool will be ready."};renderAuth()}
     });
@@ -494,26 +497,29 @@ function renderSetPassword(){
   const invited=AUTH_TYPE==="invite";
   const meta=S.session.user.user_metadata||{};
   const name=el("input",{type:"text",maxlength:"30",autocomplete:"username",value:""});
+  const first=el("input",{type:"text",autocomplete:"given-name",maxlength:"20"});
   const pw=el("input",{type:"password",autocomplete:"new-password",minlength:"8"});
   const btn=el("button",{class:"btn wide",text:"Save password"});
   const msg=el("p",{class:"err",hidden:true});
   btn.onclick=async()=>{
     msg.hidden=true;
     const team=name.value.trim();
+    if(invited&&!cleanFirst(first.value)){msg.textContent="Enter your first name.";msg.hidden=false;return}
     if(invited&&(team.length<2||team.includes("@"))){msg.textContent="Choose a team name (2 to 30 characters, no @).";msg.hidden=false;return}
     if(pw.value.length<8){msg.textContent="Use at least 8 characters for your password.";msg.hidden=false;return}
     btn.disabled=true;
     if(invited){const{error:te}=await sb.rpc("set_team_name",{p_name:team});if(te){msg.textContent=errText(te);msg.hidden=false;btn.disabled=false;return}}
     const{error}=await sb.auth.updateUser({password:pw.value,data:invited?{display_name:team}:undefined});
     if(error){msg.textContent=errText(error);msg.hidden=false;btn.disabled=false;return}
-    if(invited)S.team=team;
+    if(invited){S.team=team;try{await saveFirstName(first.value)}catch{}}
     S.needsPassword=false;toast("Password saved");location.hash="#home";route();
   };
   $("app").replaceChildren(el("div",{class:"panel"},
     el("h3",{text:invited?"Welcome! Set up your account":"Choose a new password"}),
     invited?el("p",{class:"meta",style:"margin:0 0 14px",text:`Signed in as ${S.session.user.email}. Pick a password so you can sign in next time.`}):null,
     msg,
-    invited?el("label",{class:"field"},el("span",{text:"Team name (you’ll sign in with this)"}),name):null,
+    invited?el("label",{class:"field"},el("span",{text:"First name"}),first):null,
+    invited?el("label",{class:"field"},el("span",{text:"Team name"}),name):null,
     el("label",{class:"field"},el("span",{text:"Password (8+ characters)"}),pw),btn));
 }
 
@@ -523,6 +529,7 @@ async function fnError(error,data){let m=error?errText(error):data&&data.error;l
   if(error&&error.context&&error.context.json){try{const j=await error.context.json();m=j.error||m;st=j.status||st}catch{}}return{msg:m,status:st}}
 async function joinWithCode(code){
   renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Joining the pool…"}));
+  if(S.pendingFirst){try{await saveFirstName(S.pendingFirst)}catch{}S.pendingFirst=null}
   const{data,error}=await sb.rpc("join_by_code",{p_code:code});
   if(error){toast(errText(error));location.hash="#home";return}
   toast("You’re in! Make your first pick.");location.hash=`#pool/${data}/saturday`;
@@ -536,6 +543,7 @@ async function renderJoin(code,mode,note){
     el("button",{class:"btn wide",text:"Go to sign in",onclick:()=>{location.hash="#home"}})));return}
   const field=(label,input,hint)=>el("label",{class:"field"},el("span",{text:label}),input,hint?el("small",{class:"meta",style:"display:block;margin-top:4px",text:hint}):null);
   const name=el("input",{type:"text",autocomplete:"username",maxlength:"30"});
+  const first=el("input",{type:"text",autocomplete:"given-name",maxlength:"20"});
   const email=el("input",{type:"email",autocomplete:"email"});
   const pw=el("input",{type:"password",autocomplete:mode==="signin"?"current-password":"new-password",minlength:"8"});
   const msg=el("p",{class:note&&note.ok?"ok":"err",hidden:!note,text:note?note.text:""});
@@ -556,12 +564,13 @@ async function renderJoin(code,mode,note){
       const{error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});
       if(error)return fail("That email and password don’t match.");};
   }else{
-    p.append(msg,field("Team name",name,"What everyone in the pool sees"),field("Email",email,"You’ll sign in with this"),
+    p.append(msg,field("First name",first,"Shown in brackets after your team name"),field("Team name",name,"What everyone in the pool sees"),field("Email",email,"You’ll sign in with this"),
       field("Password (8+ characters)",pw),btn,
       el("div",{class:"links"},el("button",{text:"I already have an account",onclick:()=>renderJoin(code,"signin")})));
     btn.textContent="Join the pool";
     btn.onclick=async()=>{msg.hidden=true;
       const team=name.value.trim(),e=email.value.trim();
+      if(!cleanFirst(first.value))return fail("Enter your first name.");
       if(team.length<2||team.includes("@"))return fail("Choose a team name (2 to 30 characters, no @).");
       if(!e)return fail("Enter your email.");
       if(pw.value.length<8)return fail("Use at least 8 characters for your password.");
@@ -570,7 +579,7 @@ async function renderJoin(code,mode,note){
       const f=await fnError(error,data);
       if(f.status==="exists")return renderJoin(code,"signin",{text:f.msg});
       if(f.msg)return fail(f.msg);
-      S.team=team;
+      S.team=team;S.pendingFirst=cleanFirst(first.value);
       const{error:se}=await sb.auth.signInWithPassword({email:e,password:pw.value});
       if(se)return fail("Your team is set up. Sign in with your email and password.");};
   }
@@ -580,7 +589,7 @@ async function renderJoin(code,mode,note){
 /* ---------- Home ---------- */
 async function loadHome(){
   const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
-    sb.from("profiles").select("display_name").eq("id",uid()).maybeSingle()]);
+    sb.from("profiles").select("display_name,first_name").eq("id",uid()).maybeSingle()]);
   S.invites=inv.data||[];S.pools=pools.data||[];
   if(S.invites.length){ // invited by email: join automatically, no extra tap
     let joined=null,name="";
@@ -595,6 +604,7 @@ async function loadHome(){
       if(!error&&id){toast("Your pool is ready. Invite your players next.");location.hash=`#pool/${id}/commish`;return}
     }
   }
+  S.first=(me.data&&me.data.first_name)||"";
   if(me.data&&me.data.display_name&&me.data.display_name!==S.team){S.team=me.data.display_name;renderHeader(null)}
 }
 
@@ -675,6 +685,12 @@ function renderHome(){
   app.append(el("div",{class:"panel"},el("h3",{text:"Your default team name"}),
     el("p",{class:"meta",style:"margin:0 0 12px",text:"Used when you join a pool. You can pick a different name inside each pool, on the My Team tab, until your first pick locks."}),
     el("div",{class:"row"},tn,tb)));
+  const fn=el("input",{type:"text",maxlength:"20",autocomplete:"given-name",value:S.first||"",placeholder:"First name","aria-label":"First name"});
+  const fb=el("button",{class:"sm",text:"Save"});
+  fb.onclick=async()=>{if(!cleanFirst(fn.value))return fn.focus();fb.disabled=true;try{await saveFirstName(fn.value);toast("First name saved")}catch(e){toast(errText(e))}fb.disabled=false};
+  app.append(el("div",{class:"panel"},el("h3",{text:"Your first name"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"Shown in brackets after your team name in every pool, like MightyPucks (Alex)."}),
+    el("div",{class:"row"},fn,fb)));
   const ib=installButton();if(ib)app.append(ib);
   offerInstall();
 }
@@ -735,6 +751,7 @@ function renderSaturday(v){
       el("div",{},whoBlock(me),
         el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
       puckRow(me.lives_left,S.pool.lives)));
+    if(me.team_name&&me.display_name===me.team_name)v.append(firstNamePanel());
   }
   const weeks=weekList();
   if(!weeks.length){
@@ -921,6 +938,16 @@ function renderExperts(v,d){
   v.append(panel);
 }
 
+const cleanFirst=v=>String(v||"").trim().slice(0,20);
+async function saveFirstName(v){const f=cleanFirst(v);if(!f)return;const{error}=await sb.from("profiles").update({first_name:f}).eq("id",uid());if(error)throw error;S.first=f}
+// Shown on My Team until you add your first name.
+function firstNamePanel(){
+  const inp=el("input",{type:"text",maxlength:"20",autocomplete:"given-name",placeholder:"First name","aria-label":"First name"});
+  const b=el("button",{class:"sm",text:"Save"});
+  b.onclick=async()=>{if(!cleanFirst(inp.value))return inp.focus();b.disabled=true;try{await saveFirstName(inp.value);toast("First name saved");refresh()}catch(e){b.disabled=false;toast(errText(e))}};
+  return el("div",{class:"panel"},el("h3",{text:"Add your first name"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:"It shows in brackets after your team name, so everyone knows who’s who."}),el("div",{class:"row"},inp,b));
+}
 // Team name for this pool: can be changed until your first pick locks.
 const nameLocked=()=>S.myPicks.some(p=>{const g=S.games.find(x=>x.id===p.game_id);return !g||locked(p.game_date,g)});
 function whoBlock(me){
@@ -929,9 +956,10 @@ function whoBlock(me){
   const edit=el("button",{class:"renamebtn",text:"✏️ Change team name","aria-label":"Change team name"});
   const wrap=el("div",{},who,edit);
   edit.onclick=()=>{
-    const inp=el("input",{type:"text",maxlength:"30",value:me.display_name||"","aria-label":"Team name"});
+    const cur=me.team_name||me.display_name||"";
+    const inp=el("input",{type:"text",maxlength:"30",value:cur,"aria-label":"Team name"});
     const save=el("button",{class:"sm",text:"Save"}),cancel=el("button",{class:"sm",text:"Cancel"});
-    const go=async()=>{const t=inp.value.trim();if(t===(me.display_name||""))return refresh();
+    const go=async()=>{const t=inp.value.trim();if(t===cur)return refresh();
       if(t.length<2||t.includes("@"))return toast("Team names need 2 to 30 characters, with no @.");
       save.disabled=true;const{error}=await sb.rpc("set_pool_team_name",{p:S.pool.id,p_name:t});
       if(error){save.disabled=false;return toast(errText(error))}
