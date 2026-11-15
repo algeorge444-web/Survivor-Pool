@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T15:30">
+<meta name="app-version" content="2026-11-15T16:00">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -352,13 +352,14 @@ const pickPctOrEst=pk=>{const g=pickGame(pk);if(!g)return null;const w=winPcts(g
 function puckRow(left,total){const r=el("div",{class:"pucks","aria-label":`${left} of ${total} lives left`});for(let i=0;i<total;i++)r.append(el("span",{class:"puck"+(i<left?"":" lost")}));return r}
 
 /* ---------- Routing ---------- */
-function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["picks","standings","rules","chat","commish"].includes(p[2])?p[2]:"saturday"};return{view:"home"}}
+function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="join"&&p[1])return{view:"join",code:decodeURIComponent(p[1])};if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["picks","standings","rules","chat","commish"].includes(p[2])?p[2]:"saturday"};return{view:"home"}}
 
 async function route(){
   if(!configured)return renderSetupNeeded();
+  const r=parseRoute();
+  if(r.view==="join"&&!S.needsPassword)return S.session?joinWithCode(r.code):renderJoin(r.code);
   if(!S.session)return renderAuth();
   if(S.needsPassword)return renderSetPassword();
-  const r=parseRoute();
   if(r.view==="pool"){
     if(S.loadedPool!==r.id){renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Loading pool…"}));await loadPool(r.id)}
     if(!S.pool){location.hash="#home";return}
@@ -427,7 +428,7 @@ function renderAuth(){
     p.append(el("div",{class:"links"},el("button",{text:"Forgot password?",onclick:()=>go("forgot")})));
     app.append(p);
     app.append(el("div",{class:"panel"},el("h3",{text:"New here?"}),
-      el("p",{style:"margin:0 0 10px",text:"Joining a friend’s pool? Use the invite link your commissioner emailed you. It sets up your account."}),
+      el("p",{style:"margin:0 0 10px",text:"Joining a friend’s pool? Tap the invite link your commissioner texted or emailed you. It sets up your account."}),
       el("p",{style:"margin:0 0 14px",text:"Want to run your own pool?"}),
       el("button",{class:"btn wide",style:"background:var(--boards)",text:"Create a commissioner account",onclick:()=>go("signup")})));
     return;
@@ -491,6 +492,66 @@ function renderSetPassword(){
     msg,
     invited?el("label",{class:"field"},el("span",{text:"Team name (you’ll sign in with this)"}),name):null,
     el("label",{class:"field"},el("span",{text:"Password (8+ characters)"}),pw),btn));
+}
+
+
+/* ---------- Join by texted link ---------- */
+async function fnError(error,data){let m=error?errText(error):data&&data.error;let st=data&&data.status;
+  if(error&&error.context&&error.context.json){try{const j=await error.context.json();m=j.error||m;st=j.status||st}catch{}}return{msg:m,status:st}}
+async function joinWithCode(code){
+  renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Joining the pool…"}));
+  const{data,error}=await sb.rpc("join_by_code",{p_code:code});
+  if(error){toast(errText(error));location.hash="#home";return}
+  toast("You’re in! Make your first pick.");location.hash=`#pool/${data}/saturday`;
+}
+async function renderJoin(code,mode,note){
+  renderHeader(null);const app=$("app");app.replaceChildren(el("p",{class:"meta",text:"Loading your invite…"}));
+  const{data:rows}=await sb.rpc("pool_by_code",{p_code:code});const pool=rows&&rows[0];
+  app.replaceChildren();
+  if(!pool){app.append(el("div",{class:"panel"},el("h3",{text:"This invite link isn’t working"}),
+    el("p",{style:"margin:0 0 14px",text:"It may have been replaced with a new one. Ask your commissioner to text you the link again."}),
+    el("button",{class:"btn wide",text:"Go to sign in",onclick:()=>{location.hash="#home"}})));return}
+  const field=(label,input,hint)=>el("label",{class:"field"},el("span",{text:label}),input,hint?el("small",{class:"meta",style:"display:block;margin-top:4px",text:hint}):null);
+  const name=el("input",{type:"text",autocomplete:"username",maxlength:"30"});
+  const email=el("input",{type:"email",autocomplete:"email"});
+  const pw=el("input",{type:"password",autocomplete:mode==="signin"?"current-password":"new-password",minlength:"8"});
+  const msg=el("p",{class:note&&note.ok?"ok":"err",hidden:!note,text:note?note.text:""});
+  const btn=el("button",{class:"btn wide"});
+  const fail=t=>{msg.className="err";msg.textContent=t;msg.hidden=false;btn.disabled=false};
+  const head=el("div",{style:"text-align:center;margin-bottom:14px"},
+    el("img",{src:"icon-192.png",alt:"",style:"width:72px;height:72px;border-radius:16px"}),
+    el("h3",{style:"margin:8px 0 4px",text:`You’re invited to ${pool.name}`}),
+    el("p",{class:"meta",style:"margin:0",text:`${pool.commissioner?pool.commissioner+" invited you. ":""}${pool.sport==="nfl"?"NFL · one pick every week":"NHL · one pick every Saturday"}`}));
+  const p=el("div",{class:"panel"},head);
+  if(pool.ended){p.append(el("p",{class:"err",text:"This pool has ended."}));app.append(p);return}
+  if(mode==="signin"){
+    p.append(msg,field("Email",email),field("Password",pw),btn,
+      el("div",{class:"links"},el("button",{text:"I’m new, create my team",onclick:()=>renderJoin(code)}),
+        el("button",{text:"Forgot password?",onclick:()=>{S.authMode="forgot";location.hash="#home"}})));
+    btn.textContent="Sign in and join";
+    btn.onclick=async()=>{btn.disabled=true;msg.hidden=true;
+      const{error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:pw.value});
+      if(error)return fail("That email and password don’t match.");};
+  }else{
+    p.append(msg,field("Team name",name,"What everyone in the pool sees"),field("Email",email,"You’ll sign in with this"),
+      field("Password (8+ characters)",pw),btn,
+      el("div",{class:"links"},el("button",{text:"I already have an account",onclick:()=>renderJoin(code,"signin")})));
+    btn.textContent="Join the pool";
+    btn.onclick=async()=>{msg.hidden=true;
+      const team=name.value.trim(),e=email.value.trim();
+      if(team.length<2||team.includes("@"))return fail("Choose a team name (2 to 30 characters, no @).");
+      if(!e)return fail("Enter your email.");
+      if(pw.value.length<8)return fail("Use at least 8 characters for your password.");
+      btn.disabled=true;
+      const{data,error}=await sb.functions.invoke("join-pool",{body:{code,team,email:e,password:pw.value}});
+      const f=await fnError(error,data);
+      if(f.status==="exists")return renderJoin(code,"signin",{text:f.msg});
+      if(f.msg)return fail(f.msg);
+      S.team=team;
+      const{error:se}=await sb.auth.signInWithPassword({email:e,password:pw.value});
+      if(se)return fail("Your team is set up. Sign in with your email and password.");};
+  }
+  app.append(p);
 }
 
 /* ---------- Home ---------- */
@@ -1215,6 +1276,28 @@ function renderCommish(v){
     el("p",{class:"meta",style:"margin:0 0 10px",text:"Everyone in the pool sees these on the Rules tab, along with a summary of your settings."}),
     rules,el("div",{style:"margin-top:10px"},saveRules)));
 
+  // Text an invite link
+  const textPanel=el("div",{class:"panel"},el("h3",{text:"Text an invite"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"Send your players a link by text. They tap it, pick a team name and password, and they’re in. No email needed."}));
+  const linkBox=el("input",{type:"text",readonly:true,value:"Getting your link…","aria-label":"Invite link",style:"font-size:14px"});
+  const textBtn=el("button",{class:"btn",text:"💬 Text invite"}),copyBtn=el("button",{class:"btn",style:"background:var(--boards)",text:"Copy link"});
+  const resetBtn=el("button",{class:"sm",text:"Make a new link"});
+  let link="";
+  const loadLink=async reset=>{const{data,error}=await sb.rpc("pool_invite_code",{p:po.id,reset:!!reset});
+    if(error){linkBox.value="Couldn’t get the link";return toast(errText(error))}
+    link=location.origin+location.pathname+"#join/"+data;linkBox.value=link};
+  const message=()=>`Join my survivor pool "${po.name}"! Tap the link to pick your team name and password: ${link}`;
+  textBtn.onclick=async()=>{if(!link)return;
+    if(navigator.share){try{await navigator.share({title:po.name,text:message()});return}catch(e){if(e&&e.name==="AbortError")return}}
+    location.href="sms:?&body="+encodeURIComponent(message())};
+  copyBtn.onclick=async()=>{if(!link)return;try{await navigator.clipboard.writeText(message());toast("Copied. Paste it into a text.")}catch{linkBox.select();toast("Select the link and copy it")}};
+  resetBtn.onclick=async()=>{await loadLink(true);toast("New link made. The old one won’t work anymore.")};
+  textPanel.append(el("div",{class:"row",style:"gap:8px;flex-wrap:wrap"},textBtn,copyBtn),
+    el("div",{style:"margin-top:10px"},linkBox),
+    el("div",{style:"margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px"},
+      el("small",{class:"meta",text:"Anyone with this link can join, so only send it to your players."}),resetBtn));
+  v.append(textPanel);loadLink();
+
   // Invites
   const email=el("input",{type:"email",placeholder:"friend@example.com","aria-label":"Email to invite"});
   const send=el("button",{class:"btn",text:"Send invite"});
@@ -1226,8 +1309,8 @@ function renderCommish(v){
     if(msg)return toast(msg);
     toast(data.status==="existing_user"?`Invite sent. ${e} already has an account and will see it when they sign in.`:`Invite emailed to ${e}`);
     email.value="";refresh()};
-  const inv=el("div",{class:"panel"},el("h3",{text:"Invite players"}),
-    el("p",{class:"meta",style:"margin:0 0 12px",text:"They’ll get an email with a link to join and set a password."}),
+  const inv=el("div",{class:"panel"},el("h3",{text:"Or invite by email"}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"They’ll get an email with a link to join. Hotmail and Outlook sometimes put it in Junk, so texting is more reliable."}),
     el("div",{class:"row"},email,send));
   if(S.pending.length){
     inv.append(el("p",{style:"font-weight:600;margin:16px 0 6px",text:"Waiting to join"}));
