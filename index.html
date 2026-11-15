@@ -11,6 +11,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
+<meta name="app-version" content="2026-11-15T15:30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1310,7 +1311,27 @@ function renderCommish(v){
 }
 
 /* ---------- Start ---------- */
-if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{})}
+// Auto-update: when a newer version of the site is published, reload into it.
+// Checks when the app opens or comes back to the foreground (at most once a minute).
+(function(){
+  const mine=(document.querySelector('meta[name="app-version"]')||{}).content||"";
+  let lastCheck=0;
+  async function check(){
+    if(location.protocol!=="https:"||Date.now()-lastCheck<60000)return;
+    lastCheck=Date.now();
+    try{
+      const r=await fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"});
+      const m=(await r.text()).match(/name="app-version" content="([^"]+)"/);
+      if(m&&mine&&m[1]!==mine){
+        const a=document.activeElement;if(a&&(a.tagName==="TEXTAREA"||a.tagName==="INPUT")&&a.value)return; // don't lose typing
+        location.replace(location.pathname+"?v="+encodeURIComponent(m[1])+location.hash);
+      }
+    }catch{}
+  }
+  check();
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")check()});
+})();
 (async()=>{
   if(!configured)return route();
   sb.auth.onAuthStateChange((event,session)=>{
