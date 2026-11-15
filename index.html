@@ -171,7 +171,7 @@ td .puck,.prow .puck{--w:18px;--h:13px;--t:6px}
 .byelist .chip button{border:0;background:var(--surface);border-radius:99px;width:24px;height:24px;cursor:pointer;font-weight:700;line-height:1}
 nav a.dot{position:relative}
 nav a.dot::after{content:"";position:absolute;top:8px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--red)}
-.chat{background:var(--surface);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 260px);min-height:360px}
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 360px);min-height:340px}
 .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
 .msg{max-width:82%;align-self:flex-start}
 .msg.mine{align-self:flex-end;text-align:right}
@@ -196,6 +196,8 @@ nav a.dot::after{content:"";position:absolute;top:8px;right:-2px;width:8px;heigh
 .ring.open .c{border-style:dashed;border-color:var(--blue);color:var(--blue);font-size:1.1rem}
 .ring.miss .c{border-style:dashed;border-color:var(--red);color:var(--red);font-size:1rem}
 .ring.rbye .c{border-style:dotted}
+.ring.future .c{border-style:dashed;border-color:var(--line);background:transparent}
+.ring.future small{opacity:.7}
 .ring.cur .c{box-shadow:0 0 0 3px var(--crease)}
 .ring small{display:block;margin-top:3px;font-size:.68rem;font-weight:600;color:var(--muted);white-space:nowrap}
 header .ruleslink{display:inline-block;margin:-8px 0 12px;color:#fff;font-size:.88rem;font-weight:600;text-decoration:none;border:1px solid #3A5168;border-radius:99px;padding:3px 12px}
@@ -617,6 +619,8 @@ function renderPool(tab){
   if(tab==="commish"&&!isCommish())tab="saturday";
   renderHeader(tabs);
   const app=$("app");app.replaceChildren();
+  const me=S.standings.find(r=>r.user_id===uid());
+  if(me)renderJourney(app,me,tab);
 
   if(tab==="standings")renderStandings(app);
   else if(tab==="picks")renderAllPicks(app);
@@ -635,7 +639,6 @@ function renderSaturday(v){
       el("div",{},el("div",{class:"who",text:me.display_name||"You"}),
         el("div",{class:"used",text:me.lives_left<=0?"Eliminated":`${me.lives_left} ${me.lives_left===1?"life":"lives"} left · ${me.strikes} strike${me.strikes===1?"":"s"} · ${me.wins} win${me.wins===1?"":"s"}`})),
       puckRow(me.lives_left,S.pool.lives)));
-    renderJourney(v,me);
   }
   const weeks=weekList();
   if(!weeks.length){
@@ -862,14 +865,21 @@ function renderMine(v){
 
 // A small strip of rings, one per week: the team logo you picked, ringed green (won),
 // red (lost), blue (pending), dashed for missed or still to pick. Tap a ring to jump to that week.
-function renderJourney(v,me){
+// A strip of rings, one per week, shown on every tab: the team logo you picked, ringed green (won),
+// red (lost), blue (pending), dashed for missed or still to pick, plus the next few weeks ahead.
+// Tap a played/current week to open it on My Team.
+const UPCOMING_WEEKS=4;
+function renderJourney(v,me,tab){
   const weeks=weekList();if(!weeks.length)return;
+  const nfl=S.pool.sport==="nfl";
   let cur=weeks.findIndex(d=>!weekDone(d)&&!isBye(d));if(cur===-1)cur=weeks.length-1;
   const strip=el("div",{class:"journey","aria-label":"Your picks by week"});
-  const nfl=S.pool.sport==="nfl";
-  weeks.slice(0,cur+1).forEach((d,i)=>{
+  const labelFor=d=>nfl?((S.games.find(g=>g.game_date===d)||{}).week_label||"Wk").replace("Week ","Wk "):shortDate(d);
+  let curEl=null;
+  // Weeks with games loaded (played, current and any already scheduled)
+  weeks.forEach((d,i)=>{
     const pk=S.myPicks.find(p=>p.game_date===d);
-    const lbl=nfl?((S.games.find(g=>g.game_date===d)||{}).week_label||"Wk").replace("Week ","Wk "):shortDate(d);
+    const lbl=labelFor(d);
     let cls="",inner,what;
     if(isBye(d)){cls="rbye";inner="BYE";what="bye week"}
     else if(pk){const r=pickResult(pk);cls=r==="w"||r==="pp"?"w":r==="l"?"l":"p";inner=teamLogo(pk.team,true);
@@ -877,12 +887,31 @@ function renderJourney(v,me){
     else if(weekDone(d)||gamesOn(d).every(g=>locked(d,g))){cls="miss";inner="–";what="no pick"}
     else if(me.lives_left>0&&!S.pool.ended_at){cls="open";inner="?";what="not picked yet"}
     else{cls="";inner="–";what="no pick"}
-    const b=el("button",{class:`ring ${cls}${i===S.weekIdx?" cur":""}`,"aria-label":`${lbl}: ${what}`,
-      onclick:()=>{S.weekIdx=i;renderPool("saturday")}},el("div",{class:"c"},inner),el("small",{text:lbl}));
+    const isCur=i===S.weekIdx&&(tab==="saturday"||!tab);
+    const b=el("button",{class:`ring ${cls}${isCur?" cur":""}`,"aria-label":`${lbl}: ${what}`,
+      onclick:()=>{S.weekIdx=i;if(parseRoute().tab==="saturday")renderPool("saturday");else location.hash=`#pool/${S.pool.id}/saturday`}},
+      el("div",{class:"c"},inner),el("small",{text:lbl}));
+    if(i===cur)curEl=b;
     strip.append(b);
   });
+  // Upcoming weeks whose games haven't loaded yet
+  if(!S.pool.ended_at&&me.lives_left>0){
+    const last=weeks[weeks.length-1];
+    let wk=nfl?parseInt(((S.games.find(g=>g.game_date===last)||{}).week_label||"").replace(/\D/g,""),10):NaN;
+    for(let k=1;k<=UPCOMING_WEEKS;k++){
+      const dt=new Date(last+"T12:00:00");dt.setDate(dt.getDate()+7*k);
+      const d=dt.toISOString().slice(0,10);
+      if(S.pool.end_date&&d>S.pool.end_date)break;
+      const lbl=nfl&&wk?`Wk ${wk+k}`:shortDate(d);
+      const bye=isBye(d);
+      strip.append(el("button",{class:`ring future${bye?" rbye":""}`,"aria-label":`${lbl}: ${bye?"bye week":"coming up"}`,
+        onclick:()=>toast(bye?`${lbl} is a bye week. No pick needed.`:`Games for ${lbl} show up during the week before.`)},
+        el("div",{class:"c"},bye?"BYE":""),el("small",{text:lbl})));
+    }
+  }
   v.append(strip);
-  requestAnimationFrame(()=>{strip.scrollLeft=strip.scrollWidth});
+  // Keep the current week in view, with a little of what's ahead
+  requestAnimationFrame(()=>{if(curEl)strip.scrollLeft=Math.max(0,curEl.offsetLeft-strip.clientWidth/2+curEl.offsetWidth/2)});
 }
 
 function renderMyPicks(v,counts,limit){
