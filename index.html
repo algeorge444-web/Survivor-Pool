@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T22:00">
+<meta name="app-version" content="2026-11-15T22:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -403,7 +403,7 @@ async function route(){
   }else{
     S.loadedPool=null;S.pool=null;
     renderHeader(null);
-    await loadHome();if(parseRoute().view==="profile"){renderHeader(null);renderProfile()}else renderHome();
+    await loadHome();if(parseRoute().view==="profile"){renderHeader(null);renderProfile()}else if(parseRoute().view==="home"&&S.invites.length)invitePrompt(S.invites[0]);else if(parseRoute().view==="home")renderHome();
   }
 }
 addEventListener("hashchange",route);
@@ -542,12 +542,47 @@ function renderSetPassword(){
 /* ---------- Join by texted link ---------- */
 async function fnError(error,data){let m=error?errText(error):data&&data.error;let st=data&&data.status;
   if(error&&error.context&&error.context.json){try{const j=await error.context.json();m=j.error||m;st=j.status||st}catch{}}return{msg:m,status:st}}
+// Asks for your team name for one pool, then joins it.
+function namePrompt({poolName,sub,def,join,decline}){
+  renderHeader(null);const app=$("app");
+  const inp=el("input",{type:"text",maxlength:"30",value:def||"",autocomplete:"off","aria-label":"Team name for this pool"});
+  const btn=el("button",{class:"btn wide",text:"Join the pool"});
+  const msg=el("p",{class:"err",hidden:true});
+  const go=async()=>{const t=inp.value.trim();msg.hidden=true;
+    if(t.length<2||t.includes("@")){msg.textContent="Choose a team name (2 to 30 characters, no @).";msg.hidden=false;return inp.focus()}
+    btn.disabled=true;
+    let id;try{id=await join()}catch(e){msg.textContent=errText(e);msg.hidden=false;btn.disabled=false;return}
+    if(t!==(def||"")){const{error}=await sb.rpc("set_pool_team_name",{p:id,p_name:t});
+      if(error)toast(errText(error)+". You can change it on the My Team tab.");else toast("You’re in! Make your first pick.")}
+    else toast("You’re in! Make your first pick.");
+    S.invites=[];location.hash=`#pool/${id}/saturday`};
+  btn.onclick=go;inp.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+  const p=el("div",{class:"panel"},el("div",{style:"text-align:center;margin-bottom:14px"},
+      el("img",{src:"icon-192.png",alt:"",style:"width:72px;height:72px;border-radius:16px"}),
+      el("h3",{style:"margin:8px 0 4px",text:`You’re joining ${poolName}`}),sub?el("p",{class:"meta",style:"margin:0",text:sub}):null),
+    msg,el("label",{class:"field"},el("span",{text:"Your team name for this pool"}),inp,
+      el("small",{class:"meta",style:"display:block;margin-top:4px",text:"This is what everyone in this pool sees. You can change it until your first pick locks."})),btn);
+  if(decline)p.append(el("div",{class:"links"},el("button",{text:"No thanks, decline this invite",onclick:decline})));
+  app.replaceChildren(p);inp.focus();inp.select();
+}
 async function joinWithCode(code){
-  renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Joining the pool…"}));
+  renderHeader(null);$("app").replaceChildren(el("p",{class:"meta",text:"Loading your invite…"}));
   if(S.pendingFirst){try{await saveFirstName(S.pendingFirst)}catch{}S.pendingFirst=null}
-  const{data,error}=await sb.rpc("join_by_code",{p_code:code});
-  if(error){toast(errText(error));location.hash="#home";return}
-  toast("You’re in! Make your first pick.");location.hash=`#pool/${data}/saturday`;
+  const{data:rows}=await sb.rpc("pool_by_code",{p_code:code});const pool=rows&&rows[0];
+  if(!pool){toast("This invite link isn’t working anymore. Ask your commissioner for a new one.");location.hash="#home";return}
+  const[{data:mem},{data:me}]=await Promise.all([
+    sb.from("pool_members").select("user_id").eq("pool_id",pool.id).eq("user_id",uid()).maybeSingle(),
+    sb.from("profiles").select("display_name").eq("id",uid()).maybeSingle()]);
+  if(mem){location.hash=`#pool/${pool.id}/saturday`;return}
+  if(pool.ended){toast("This pool has ended.");location.hash="#home";return}
+  namePrompt({poolName:pool.name,def:(me&&me.display_name)||S.team||"",
+    sub:`${pool.commissioner?pool.commissioner+" invited you. ":""}${pool.sport==="nfl"?"NFL · one pick every week":"NHL · one pick every Saturday"}`,
+    join:async()=>{const{data,error}=await sb.rpc("join_by_code",{p_code:code});if(error)throw error;return data}});
+}
+function invitePrompt(i){
+  namePrompt({poolName:i.pool_name,def:S.team||"",sub:"You were invited by email.",
+    join:async()=>{const{data,error}=await sb.rpc("accept_invite",{p_invite:i.id});if(error)throw error;return data},
+    decline:async()=>{await sb.from("invites").delete().eq("id",i.id);route()}});
 }
 async function renderJoin(code,mode,note){
   renderHeader(null);const app=$("app");app.replaceChildren(el("p",{class:"meta",text:"Loading your invite…"}));
@@ -755,11 +790,6 @@ async function loadHome(){
   const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
     sb.from("profiles").select("display_name,first_name,avatar,avatar_url").eq("id",uid()).maybeSingle()]);
   S.invites=inv.data||[];S.pools=pools.data||[];
-  if(S.invites.length){ // invited by email: join automatically, no extra tap
-    let joined=null,name="";
-    for(const i of S.invites){const{data,error}=await sb.rpc("accept_invite",{p_invite:i.id});if(!error&&data){joined=data;name=i.pool_name}}
-    if(joined){S.invites=[];toast(`You joined ${name}! Make your first pick.`);location.hash=`#pool/${joined}/saturday`;return}
-  }
   const pend=(S.session.user.user_metadata||{}).pending_pool;
   if(pend&&pend.name){
     await sb.auth.updateUser({data:{pending_pool:null}});
@@ -829,9 +859,10 @@ function renderHome(){
   const name=el("input",{type:"text",placeholder:"e.g. Sunday Survivors",maxlength:"60","aria-label":"Survivor pool name"});
   const sport=el("select",{"aria-label":"Sport"},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
   const btn=el("button",{class:"btn",text:"Create pool"});
-  const poolTeam=el("input",{type:"text",maxlength:"30",value:S.team||"","aria-label":"Your team name in this pool"});
+  const poolTeam=el("input",{type:"text",maxlength:"30",value:S.team||"","aria-label":"Your team name for this pool"});
   btn.onclick=async()=>{const n=name.value.trim();if(!n)return name.focus();
-    const t=poolTeam.value.trim();if(t&&(t.length<2||t.includes("@")))return toast("Team names need 2 to 30 characters, with no @.");
+    const t=poolTeam.value.trim();if(!t){toast("Enter your team name for this pool.");return poolTeam.focus()}
+    if(t.length<2||t.includes("@"))return toast("Team names need 2 to 30 characters, with no @.");
     btn.disabled=true;
     const{data,error}=await sb.rpc("create_pool",{p_name:n,p_sport:sport.value,p_team:t&&t!==S.team?t:null});
     if(error){toast(errText(error));btn.disabled=false;return}
@@ -839,7 +870,7 @@ function renderHome(){
   app.append(el("div",{class:"panel",style:"margin-top:18px"},el("h3",{text:"Start a new pool"}),
     el("p",{class:"meta",style:"margin:0 0 12px",text:"You’ll be the commissioner. You can change the rules and invite people by email."}),
     el("label",{class:"field"},el("span",{text:"Sport"}),sport),
-    el("label",{class:"field"},el("span",{text:"Your team name in this pool"}),poolTeam),
+    el("label",{class:"field"},el("span",{text:"Your team name for this pool"}),poolTeam),
     el("label",{class:"field"},el("span",{text:"Survivor pool name"}),el("div",{class:"row"},name,btn))));
   app.append(el("a",{class:"poolcard",href:"#profile"},el("div",{style:"display:flex;align-items:center;gap:12px"},avatarEl(S.avatar,S.team,44),
     el("div",{},el("strong",{text:"My profile"}),el("small",{text:"Avatar, names, password and sign out"}))),el("span",{class:"badge",text:"Open ›"})));
