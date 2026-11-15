@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T22:20">
+<meta name="app-version" content="2026-11-15T22:40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -625,7 +625,7 @@ async function renderJoin(code,mode,note){
       if(!e)return fail("Enter your email.");
       if(pw.value.length<8)return fail("Use at least 8 characters for your password.");
       btn.disabled=true;
-      const{data,error}=await sb.functions.invoke("join-pool",{body:{code,team,email:e,password:pw.value}});
+      const{data,error}=await sb.functions.invoke("join-pool",{body:{code,team,email:e,password:pw.value,first:cleanFirst(first.value)}});
       const f=await fnError(error,data);
       if(f.status==="exists")return renderJoin(code,"signin",{text:f.msg});
       if(f.msg)return fail(f.msg);
@@ -1647,7 +1647,7 @@ function renderCommish(v){
     toast(data.status==="existing_user"?`Invite sent. ${e} already has an account and will see it when they sign in.`:`Invite emailed to ${e}`);
     email.value="";refresh()};
   const inv=el("div",{class:"panel"},el("h3",{text:"Or invite by email"}),
-    el("p",{class:"meta",style:"margin:0 0 12px",text:"They’ll get an email with a link to join. Hotmail and Outlook sometimes put it in Junk, so texting is more reliable."}),
+    el("p",{class:"meta",style:"margin:0 0 12px",text:"They’ll get an email with a link to join. The link doesn’t expire. If it doesn’t arrive, check their Junk folder or text them the link instead."}),
     el("div",{class:"row"},email,send));
   if(S.pending.length){
     inv.append(el("p",{style:"font-weight:600;margin:16px 0 6px",text:"Waiting to join"}));
@@ -1773,7 +1773,12 @@ if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.service
   if(/access_token|error_description/.test(location.hash)){
     const err=new URLSearchParams(location.hash.slice(1)).get("error_description");
     history.replaceState(null,"",location.pathname+location.search+"#home");
-    if(err)S.authMsg={text:err.replace(/\+/g," ")};
+    if(err){
+      if(S.session)toast("That email link was already used, but you’re signed in, so you’re all set.");
+      else S.authMsg={text:/expired|invalid/i.test(err)
+        ?"That email link has already been used or has expired. Sign in with your email and password, or tap “Forgot password?” for a fresh link. Invited to a pool? Ask your commissioner to text you the invite link."
+        :err.replace(/\+/g," ")};
+    }
   }
   route();
   setInterval(()=>{const r=parseRoute();if(document.visibilityState==="visible"&&S.session&&r.view==="pool"&&r.tab!=="commish"&&r.tab!=="chat")refresh()},60000);
