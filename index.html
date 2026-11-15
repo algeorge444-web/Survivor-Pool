@@ -638,6 +638,18 @@ async function renderJoin(code,mode,note){
 
 // Avatar badges: [id, label, image file]
 const AVATARS={
+canada:[
+ ["i-ca-flag","Canada flag","avatars/ca-flag.webp"],
+ ["i-ca-shield","Canada shield","avatars/ca-shield.webp"],
+ ["i-ca-crown","True North","avatars/ca-crown.webp"],
+ ["i-ca-sticks","Maple sticks","avatars/ca-sticks.webp"],
+ ["i-ca-puck","Maple puck","avatars/ca-puck.webp"],
+ ["i-ca-mask","Canada goalie mask","avatars/ca-mask.webp"],
+ ["i-ca-jersey","Canada jersey","avatars/ca-jersey.webp"],
+ ["i-ca-rink","Centre ice","avatars/ca-rink.webp"],
+ ["i-ca-helmet","Canada helmet","avatars/ca-helmet.webp"],
+ ["i-ca-football","Maple football","avatars/ca-football.webp"],
+],
 hockey:[
  ["i-goalie-mask","Goalie mask","avatars/goalie-mask.webp"],
  ["i-goalie-sticks","Goalie & sticks","avatars/goalie-sticks.webp"],
@@ -728,7 +740,7 @@ function renderProfile(){
       S.avatar=url;toast("Photo saved");renderHeader(null);renderProfile();
     }catch(e){up.disabled=false;up.textContent="📷 Upload my own photo";toast(errText(e))}};
   pick.append(up,file,el("small",{class:"meta",style:"display:block;margin:6px 0 4px",text:"Pick a photo from your phone or computer. It’s cropped to a circle."}));
-  group("🏒 Hockey",AVATARS.hockey);group("🏈 Football",AVATARS.football);group("😎 Just for fun",AVATARS.fun);
+  group("🍁 Canada",AVATARS.canada);group("🏒 Hockey",AVATARS.hockey);group("🏈 Football",AVATARS.football);group("😎 Just for fun",AVATARS.fun);
   if(S.avatar){const none=el("button",{class:"sm",style:"margin-top:12px",text:"Use my initial instead"});
     none.onclick=async()=>{const{error}=await sb.from("profiles").update({avatar:null,avatar_url:null}).eq("id",uid());if(error)return toast(errText(error));S.avatar=null;renderHeader(null);renderProfile()};pick.append(none)}
   // Names
