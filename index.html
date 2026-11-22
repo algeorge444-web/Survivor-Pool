@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T15:10">
+<meta name="app-version" content="2026-11-22T15:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -243,9 +243,11 @@ tr:last-child td{border-bottom:0}
 tr.out td{opacity:.5}
 .tablewrap{overflow-x:auto}
 .hist{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.hist span{font-size:.72rem;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--chip)}
-.hist .w{background:var(--good);color:#fff}
-.hist .l{background:var(--red);color:#fff}
+.hist{gap:6px}
+.hist>span{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:700;padding:3px 8px 3px 4px;border-radius:8px;background:var(--chip);border:2px solid transparent}
+.hist>span .logo{width:20px;height:20px;flex:none}
+.hist .w{background:#E9F7EF;border-color:var(--good);color:#145A32}
+.hist .l{background:#FDECEC;border-color:var(--red);color:#8E1B1B}
 
 .prow{border-top:1px solid var(--line);padding:12px 0}
 .prow:first-of-type{border-top:0;padding-top:0}
@@ -1377,7 +1379,7 @@ function renderStandings(v){
     for(const p of S.allPicks.filter(x=>x.user_id===r.user_id).sort((a,b)=>a.game_date.localeCompare(b.game_date))){
       if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
       const res=pickResult(p);
-      hist.append(el("span",{class:resClass(res),title:slateTitle(p.game_date),text:p.team}));
+      hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":""}`},teamLogo(p.team,true),p.team));
     }
     tb.append(el("tr",{class:r.lives_left<=0?"out":""},
       el("td",{},el("div",{style:"font-weight:600;display:flex;align-items:center;gap:8px"},avatarEl(r.avatar,r.team_name,28),el("span",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(r.is_commissioner?" · commissioner":"")})),
