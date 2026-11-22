@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T20:00">
+<meta name="app-version" content="2026-11-22T20:10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -353,6 +353,7 @@ const locked=(d,g)=>{
   if(m==="first")return gamesOn(d).some(started);
   if(m==="sunday_first")return gamesOn(d).filter(x=>etDay(x.start_time)===d).some(started);
   if(m==="sunday_1pm")return Date.now()>=etOnePm(d);
+  if(m==="sunday_11am")return Date.now()>=etAt(d,11);
   if(m==="friday_10pm")return Date.now()>=friday10(d);
   return false;
 };
@@ -361,6 +362,7 @@ const LOCK_TEXT={
   first:{nhl:"All picks lock at the first puck drop.",nfl:"All picks lock at the first kickoff of the week."},
   sunday_first:"Picks are due before the first Sunday kickoff. Teams that already played can’t be picked.",
   sunday_1pm:"Picks are due Sunday at 1:00 p.m. Eastern. Teams that already played can’t be picked.",
+  sunday_11am:"Picks are due Sunday at 11:00 a.m. Eastern. Teams whose game already started (like Thursday night) can’t be picked.",
   friday_10pm:{nhl:"All picks are due Friday at 10:00 p.m. Eastern.",nfl:"Picks are due Friday at 10:00 p.m. Eastern. Thursday teams lock at kickoff."}
 };
 const revealText=()=>({
@@ -368,6 +370,7 @@ const revealText=()=>({
   first:S.pool&&S.pool.sport==="nfl"?"Everyone’s picks are revealed at the first kickoff of the week.":"Everyone’s picks are revealed at the first puck drop.",
   sunday_first:"Everyone’s picks are revealed at the first Sunday kickoff.",
   sunday_1pm:"Everyone’s picks are revealed Sunday at 1:00 p.m. Eastern.",
+  sunday_11am:"Everyone’s picks are revealed Sunday at 11:00 a.m. Eastern, when picks lock.",
   friday_10pm:"Everyone’s picks are revealed Friday at 10:00 p.m. Eastern."
 }[S.pool.lock_mode]||"Each pick is revealed when its game starts.");
 const lockText=()=>{const t=LOCK_TEXT[S.pool.lock_mode]||LOCK_TEXT.game;return typeof t==="string"?t:t[S.pool.sport||"nhl"]};
@@ -1447,6 +1450,7 @@ function appRules(){
     first:nfl?"Picks are due before the first game of the week (usually Thursday night).":"Picks are due before the first puck drop on Saturday.",
     sunday_first:"Picks are due before the first Sunday kickoff. Teams whose game has already started can’t be picked.",
     sunday_1pm:"Picks are due Sunday at 1:00 p.m. Eastern. Teams whose game has already started can’t be picked.",
+    sunday_11am:"Picks are due Sunday at 11:00 a.m. Eastern. Teams whose game has already started (like Thursday night) can’t be picked.",
     friday_10pm:nfl?"Picks are due Friday at 10:00 p.m. Eastern. Teams whose game has already started (like Thursday night) can’t be picked.":"Picks are due Friday at 10:00 p.m. Eastern, the night before the Saturday games."
   }[po.lock_mode]||"Each pick locks when that game starts.";
   return [
@@ -1651,7 +1655,7 @@ function renderCommish(v){
   const lives=el("select",{},...opt([1,2,3,4,5].map(n=>[n,`${n} ${n===1?"life":"lives"}`]),po.lives));
   const reuse=el("select",{},...opt([[1,"Once per season"],[2,"Twice per season"]],po.max_picks_per_team));
   const lockChoices=po.sport==="nfl"
-    ?[["first","Before the first game of the week"],["sunday_first","Before the first Sunday game"],["sunday_1pm","Sunday at 1:00 p.m. Eastern"],["friday_10pm","Friday at 10:00 p.m. Eastern"],["game","When each player’s picked game starts"]]
+    ?[["first","Before the first game of the week"],["sunday_first","Before the first Sunday game"],["sunday_11am","Sunday at 11:00 a.m. Eastern"],["sunday_1pm","Sunday at 1:00 p.m. Eastern"],["friday_10pm","Friday at 10:00 p.m. Eastern"],["game","When each player’s picked game starts"]]
     :[["game","When each player’s picked game starts"],["first","At the first puck drop of the day"],["friday_10pm","Friday at 10:00 p.m. Eastern (night before)"]];
   const lock=el("select",{},...opt(lockChoices,po.lock_mode));
   const missed=el("input",{type:"checkbox",checked:po.missed_pick_strike});
