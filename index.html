@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T23:40">
+<meta name="app-version" content="2026-11-22T23:55">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -384,6 +384,17 @@ tr.out td{opacity:.5}
 .csec.danger .csi{background:#FDECEC}
 .csec.danger .cst b{color:#B3161E}
 @media (prefers-reduced-motion:reduce){.chev{transition:none}}
+.pfsel{display:grid;grid-template-columns:1fr;gap:0}
+.pfnow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;font-size:.92rem}
+.pfnow .logo{width:24px;height:24px;display:inline-block;vertical-align:middle;margin:0 4px}
+.pfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.pfteam{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:2px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font:inherit}
+.pfteam .logo{width:34px;height:34px}
+.pfteam b{font-size:.95rem}
+.pfteam small{font-size:.7rem;color:var(--muted)}
+.pfteam.sel{border-color:var(--blue);background:#E8F0FB}
+.pfteam.arm{border-color:#F2C14E;background:#FFF6DC}
+.pfteam.used{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -1004,7 +1015,7 @@ async function loadPool(id,quiet){
   const isC=pool.commissioner_id===uid()||(pool.co_commissioners||[]).includes(uid());
   const [games,mine,st,all,pend,ts]=await Promise.all([
     sb.from("games").select("*").eq("sport",pool.sport||"nhl").gte("game_date",pool.start_date).order("game_date").order("start_time"),
-    sb.from("picks").select("game_date,team,game_id").eq("pool_id",id).eq("user_id",uid()),
+    sb.from("picks").select("game_date,team,game_id,set_by").eq("pool_id",id).eq("user_id",uid()),
     sb.rpc("pool_standings",{p:id}),
     sb.rpc("pool_picks",{p:id}),
     isC?sb.from("invites").select("id,email,created_at").eq("pool_id",id).is("accepted_at",null).order("created_at"):Promise.resolve({data:[]}),
@@ -1468,7 +1479,7 @@ function renderMine(v){
       const repick=r==="pp"&&S.pool.postponed_rule==="repick";
       const lockedIn=g&&!repick&&locked(d,g);
       const status=r[0]==="t"?resLabel(r):r==="pp"?(repick?"Your game was postponed. Pick another team.":"Postponed · counts as a win"):r==="w"?"Won ✓":r==="l"?"Lost":lockedIn?"Locked in":"You can change it until it locks";
-      v.append(el("div",{class:"mypick"},teamLogo(pk.team),el("div",{},el("div",{class:"lbl",text:"✓ Your pick"}),
+      v.append(el("div",{class:"mypick"},teamLogo(pk.team),el("div",{},el("div",{class:"lbl",text:pk.set_by&&pk.set_by!==uid()?"✓ Your pick · entered by your commissioner":"✓ Your pick"}),
         el("strong",{text:teamName(pk.team)}),el("small",{text:`${pw?`${Math.round(pw.v)}% ${pw.est?"est.":"to win"} · `:""}${status}`}))));
       if(alive&&!S.pool.ended_at&&(!lockedIn||repick)&&r!=="w"&&r!=="l"){go.textContent=repick?"Pick another team":"Change your pick";v.append(go)}
     }else if(S.pool.ended_at){
@@ -1915,6 +1926,7 @@ function renderRules(v){
 const COMM_SECTIONS=[
   {key:"invite",icon:"💬",title:"Invite players",sub:"Text the join link or send email invites",match:["Text an invite","Or invite by email"]},
   {key:"players",icon:"👥",title:"Players & strikes",sub:"Add or give back strikes, co-commissioners, remove players",match:["Players and strikes"]},
+  {key:"pickfor",icon:"🎯",title:"Make a pick for a player",sub:"Enter a pick for someone who can’t do it themselves",match:["Make a pick for a player"]},
   {key:"spectators",icon:"👀",title:"Spectators",sub:"Let people from your other pools follow along",match:["👀 Spectators"]},
   {key:"settings",icon:"⚙️",title:"Pool settings",sub:"Lives, deadline, ties, season end and more",match:["Pool settings"]},
   {key:"rules",icon:"📋",title:"Pool rules",sub:"House rules everyone sees on the Pool rules page",match:["Pool rules"]},
@@ -1938,7 +1950,7 @@ function renderCommishTools(v){
       el("span",{class:"cbadge",text:isOwner()?"Commissioner":"Co-commissioner"})),
     el("div",{class:"cstats"},stat(`${alive}/${total}`,"still alive"),stat(picksIn,`picked ${po.sport==="nfl"?"this week":"this Saturday"}`),
       stat(missing,"haven’t picked",missing?"warn":""),stat((S.pending||[]).length,"invites pending")),
-    el("div",{class:"cquicks"},quick("💬","Invite","invite"),quick("👥","Players","players"),quick("⚙️","Settings","settings"),quick("📋","Rules","rules"))));
+    el("div",{class:"cquicks"},quick("💬","Invite","invite"),quick("👥","Players","players"),quick("🎯","Pick for","pickfor"),quick("⚙️","Settings","settings"))));
   // Group the existing panels into sections
   const panels=[...tmp.children];const used=new Set();
   for(const sec of COMM_SECTIONS){
@@ -2002,6 +2014,55 @@ function renderCommish(v){
   v.append(el("div",{class:"panel"},el("h3",{text:"Pool rules"}),
     el("p",{class:"meta",style:"margin:0 0 10px",text:"Everyone in the pool sees these on the Rules tab, along with a summary of your settings."}),
     rules,el("div",{style:"margin-top:10px"},saveRules)));
+
+  // Make a pick for a player who can't do it themselves
+  {
+    const pp=el("div",{class:"panel"},el("h3",{text:"Make a pick for a player"}),
+      el("p",{class:"meta",style:"margin:0 0 12px",text:"For a player who can’t pick themselves. The normal rules still apply: it has to be a team they haven’t used, in a game that hasn’t started. You can enter it even after the pick deadline, as long as that game hasn’t kicked off. They’ll see it was entered by you."}));
+    const alivePl=S.standings.filter(r=>r.lives_left>0).sort((a,b)=>(a.display_name||"").localeCompare(b.display_name||""));
+    const openWeeks=weekList().filter(d=>!isBye(d)&&gamesOn(d).some(g=>g.status==="scheduled"&&!started(g)));
+    if(!alivePl.length||!openWeeks.length){pp.append(el("p",{class:"meta",text:!alivePl.length?"Nobody is still alive.":"There are no upcoming games to pick right now."}))}
+    else{
+      const who=el("select",{"aria-label":"Player"},...alivePl.map(r=>el("option",{value:r.user_id,text:r.display_name})));
+      const wk=el("select",{"aria-label":"Week"},...openWeeks.map(d=>el("option",{value:d,text:slateTitle(d)})));
+      const cur=weekList()[S.weekIdx];if(openWeeks.includes(cur))wk.value=cur;
+      if(S.pickFor&&alivePl.some(r=>r.user_id===S.pickFor.u))who.value=S.pickFor.u;
+      if(S.pickFor&&openWeeks.includes(S.pickFor.d))wk.value=S.pickFor.d;
+      const now=el("div",{class:"pfnow"}),grid=el("div",{class:"pfgrid"});
+      const load=async()=>{
+        S.pickFor={u:who.value,d:wk.value};
+        now.replaceChildren(el("span",{class:"meta",text:"Loading…"}));grid.replaceChildren();
+        const{data,error}=await sb.rpc("commish_player_picks",{p:po.id,u:who.value});
+        if(error){now.replaceChildren(el("span",{class:"err",text:errText(error)}));return}
+        const picks=data||[],d=wk.value,mine=picks.find(x=>x.game_date===d);
+        const counts={};for(const x of picks)if(x.game_date!==d&&!(po.bye_weeks||[]).includes(x.game_date))counts[x.team]=(counts[x.team]||0)+1;
+        const mg=mine&&S.games.find(g=>String(g.id)===String(mine.game_id));
+        const mineLocked=mg&&started(mg);
+        now.replaceChildren(mine?el("span",{},"Current pick: ",teamLogo(mine.team,true),el("b",{text:teamName(mine.team)}),mine.set_by_commish?el("small",{class:"meta",text:" · entered by a commissioner"}):null)
+          :el("span",{class:"meta",text:"No pick yet for this week."}));
+        if(mine&&!mineLocked){const clr=el("button",{class:"sm",text:"Clear pick"});
+          clr.onclick=async()=>{clr.disabled=true;const{error}=await sb.rpc("commish_set_pick",{p:po.id,u:who.value,g_date:d,p_team:null});if(error){clr.disabled=false;return toast(errText(error))}toast("Pick cleared");refresh()};now.append(clr)}
+        if(mineLocked){grid.append(el("p",{class:"meta",text:"Their game has already started, so this pick can’t be changed."}));return}
+        for(const g of gamesOn(d).filter(g=>g.status==="scheduled"&&!started(g))){
+          for(const t of [g.away,g.home]){
+            const usedUp=(counts[t]||0)>=po.max_picks_per_team,sel=mine&&mine.team===t;
+            const b=el("button",{class:"pfteam"+(sel?" sel":"")+(usedUp?" used":""),title:`${teamName(t)} ${t===g.away?"at":"vs"} ${t===g.away?g.home:g.away}`},
+              teamLogo(t,true),el("b",{text:t}),el("small",{text:usedUp?"Used":`${t===g.away?"@":"vs"} ${t===g.away?g.home:g.away}`}));
+            b.disabled=usedUp||sel;
+            b.onclick=async()=>{const name=(alivePl.find(r=>r.user_id===who.value)||{}).display_name||"them";
+              if(b.dataset.armed!=="1"){grid.querySelectorAll(".pfteam").forEach(x=>{x.dataset.armed="";x.classList.remove("arm")});b.dataset.armed="1";b.classList.add("arm");toast(`Tap ${t} again to pick it for ${name}`);return}
+              b.disabled=true;const{error}=await sb.rpc("commish_set_pick",{p:po.id,u:who.value,g_date:d,p_team:t});
+              if(error){b.disabled=false;return toast(errText(error))}toast(`Picked ${teamName(t)} for ${name}`);refresh()};
+            grid.append(b);
+          }
+        }
+      };
+      who.onchange=load;wk.onchange=load;
+      pp.append(el("div",{class:"pfsel"},el("label",{class:"field"},el("span",{text:"Player"}),who),el("label",{class:"field"},el("span",{text:"Week"}),wk)),now,grid);
+      load();
+    }
+    v.append(pp);
+  }
 
   // Spectators: people from your other pools who can watch this one
   const specPanel=el("div",{class:"panel"},el("h3",{text:"👀 Spectators"}),
