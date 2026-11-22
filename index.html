@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T20:10">
+<meta name="app-version" content="2026-11-22T20:45">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -292,6 +292,39 @@ tr.out td{opacity:.5}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.livedot{animation:none}}
 .histmore{border:2px dashed var(--line);background:none;border-radius:9px;padding:0 8px;min-height:29px;font:inherit;font-size:.74rem;font-weight:700;color:var(--blue);cursor:pointer}
+.wbanner{margin-bottom:16px}
+.wart{position:relative;container-type:inline-size;border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.wart img{display:block;width:100%;height:auto}
+.wcard{color:#fff;text-align:center;font-family:"Saira Condensed","Arial Narrow",sans-serif}
+.wart .wcard{position:absolute;left:70.8%;top:20.5%;width:17.6%;height:53.9%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1cqw;padding:0 .8cqw;box-sizing:border-box;overflow:hidden}
+.whead{display:flex;flex-direction:column;align-items:center}
+.wwho{position:relative;display:inline-block;line-height:0}
+.wart .wwho .av{width:max(22px,5.4cqw)!important;height:max(22px,5.4cqw)!important;font-size:max(10px,2.4cqw)!important}
+.wart .wwho .av svg,.wart .wwho .av img{width:100%;height:100%}
+.wribbon{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:linear-gradient(#E9B949,#B98A1E);color:#12263A;font-weight:800;font-size:9px;line-height:1.3;letter-spacing:.06em;padding:0 6px;border-radius:3px;white-space:nowrap}
+.wname{font-weight:800;line-height:1.05;margin-top:max(9px,1.4cqw);overflow-wrap:anywhere}
+.wart .wname{font-size:max(11px,2.6cqw)}
+.wline{line-height:1.25}
+.wgold{color:#F2C14E;font-weight:700}
+.wbtn{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:7px 10px;border-radius:6px;border:1.5px solid #fff;background:transparent;color:#fff;font:inherit;font-weight:800;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;cursor:pointer;font-size:.95rem}
+.wbtn.gold{background:linear-gradient(#F2C14E,#C9952A);border-color:#E9B949;color:#12263A}
+.wwhy{font-size:.8rem;opacity:.75;margin-top:6px}
+.wbelow{background:linear-gradient(#1B2F55,#0A1630);border-radius:12px;padding:14px 18px;margin-top:10px;font-size:1.05rem}
+.wbelow .wbtn{display:inline-block;width:auto;min-width:46%;margin:10px 4px 0}
+/* Phones: only the winner's avatar and name sit on the banner; details go underneath. */
+.wart .wdetails{display:none}
+@container (min-width:520px){
+  .wart .wcard{gap:.35cqw}
+  .wart .wdetails{display:block;width:100%}
+  .wart .wline{font-size:1.3cqw}
+  .wart .wbtn{font-size:1.15cqw;padding:.35cqw .3cqw;margin-top:.45cqw;border-radius:.5cqw;border-width:1px}
+  .wart .wwhy{display:none}
+  .wart .wname{font-size:1.8cqw;margin-top:1cqw}
+  .wart .wwho .av{width:3.6cqw!important;height:3.6cqw!important;font-size:1.6cqw!important}
+  .wart .wribbon{font-size:.85cqw;bottom:-.8cqw;padding:0 .5cqw}
+}
+@media (min-width:552px){.wbelow{display:none}}
+
 </style>
 </head>
 <body>
@@ -1395,10 +1428,34 @@ function poolWinners(){
 }
 function renderWinner(v){
   const w=poolWinners();if(!w)return;
+  const nfl=S.pool.sport==="nfl";
+  const top=w.list[0],co=w.list.length>1;
+  const mine=S.allPicks.filter(p=>p.user_id===top.user_id&&!p.hidden&&p.team).sort((a,b)=>b.game_date.localeCompare(a.game_date));
+  const lastPick=mine[0]?teamName(mine[0].team):"—";
+  const weeks=weekList().filter(d=>weekDone(d)&&!isBye(d)).length;
+  const year=(S.pool.start_date||"").slice(0,4)||String(new Date().getFullYear());
+  const unit=nfl?"Week":"Saturday";
   const names=w.list.map(r=>r.display_name||"Player");
-  const label=names.length>1?`Co-winners: ${names.slice(0,-1).join(", ")} & ${names[names.length-1]}`:`Winner: ${names[0]}`;
-  v.append(el("div",{class:"winner"},el("div",{class:"cup",text:"🏆"}),
-    el("div",{},el("strong",{text:label}),el("small",{text:w.why+(S.pool.friendly?" · bragging rights earned":"")}))));
+  const title=co?`Co-winners: ${names.join(" & ")}`:names[0];
+  const share=async()=>{
+    const text=`🏆 ${co?names.join(" & ")+" are the co-champions":names[0]+" is the champion"} of ${S.pool.name}! Survived ${weeks} ${unit.toLowerCase()}${weeks===1?"":"s"}.`;
+    const url=location.origin+location.pathname;
+    if(navigator.share){try{await navigator.share({title:S.pool.name,text,url});return}catch(e){if(e&&e.name==="AbortError")return}}
+    try{await navigator.clipboard.writeText(`${text} ${url}`);toast("Copied. Paste it anywhere to share.")}catch{toast(text)}};
+  const head=()=>el("div",{class:"whead"},el("div",{class:"wwho"},avatarEl(top.avatar,top.team_name||top.display_name,46),el("span",{class:"wribbon",text:co?"CO-WINNER":"WINNER"})),
+    el("div",{class:"wname",text:title}));
+  const info=()=>el("div",{class:"wdetails"},
+    el("div",{class:"wline wgold",text:`🏆 ${year} Season ${co?"Co-winners":"Winner"}`}),
+    el("div",{class:"wline",text:`Survived ${weeks} ${unit}${weeks===1?"":"s"}`}),
+    el("div",{class:"wline",text:`Total pool: ${S.standings.length} players`}),
+    el("div",{class:"wline"},"Final pick: ",el("b",{text:lastPick})),
+    el("a",{class:"wbtn gold",href:`#pool/${S.pool.id}/standings`,text:"View standings"}),
+    el("button",{class:"wbtn",text:"Share win",onclick:share}),
+    el("div",{class:"wwhy",text:w.why+(S.pool.friendly?" · bragging rights earned":"")}));
+  v.append(el("div",{class:"wbanner"},
+    el("div",{class:"wart"},el("img",{src:nfl?"winner-nfl.jpg":"winner-nhl.jpg",alt:`${nfl?"NFL":"NHL"} Survivor Pool Champion`}),
+      el("div",{class:"wcard"},head(),info())),
+    el("div",{class:"wbelow wcard"},info())));
 }
 
 function renderStandings(v){
