@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T19:00">
+<meta name="app-version" content="2026-11-22T19:30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -381,9 +381,10 @@ const resultOf=(d,t)=>{const g=gameFor(d,t);return g&&g.status==="final"&&g.winn
 // Result of a saved pick, using the exact game it was made on (games can move weeks).
 const pickGame=pk=>pk&&pk.game_id!=null?S.games.find(x=>String(x.id)===String(pk.game_id)):null;
 const pickResult=pk=>{const g=pickGame(pk);if(!g)return"p";if(g.status==="postponed"||g.game_date!==pk.game_date)return"pp";
+  if(g.status==="final"&&g.winner==="TIE"){const t=(S.pool&&S.pool.tie_rule)||"loss";return t==="win"?"tw":t==="push"?"t":"tl"}
   return g.status==="final"&&g.winner?(g.winner===pk.team?"w":"l"):"p"};
-const resLabel=r=>({w:"Won",l:"Lost",pp:"Postponed · no strike",p:"Pending"})[r];
-const resClass=r=>r==="pp"?"w":r==="p"?"":r;
+const resLabel=r=>({w:"Won",l:"Lost",pp:"Postponed · no strike",p:"Pending",tl:"Tie · counts as a loss",tw:"Tie · counts as a win",t:"Tie · no life lost"})[r];
+const resClass=r=>r==="pp"||r==="tw"?"w":r==="tl"?"l":r==="p"||r==="t"?"":r;
 // Early estimate until sportsbooks post odds: each team's record (log5) plus home advantage.
 function estimate(g){
   const A=S.stats&&S.stats[g.away],H=S.stats&&S.stats[g.home];if(!A||!H||A.pct==null||H.pct==null)return null;
@@ -1214,7 +1215,7 @@ function renderMine(v){
       const pw=pickPctOrEst(pk);
       const repick=r==="pp"&&S.pool.postponed_rule==="repick";
       const lockedIn=g&&!repick&&locked(d,g);
-      const status=r==="pp"?(repick?"Your game was postponed. Pick another team.":"Postponed · counts as a win"):r==="w"?"Won ✓":r==="l"?"Lost":lockedIn?"Locked in":"You can change it until it locks";
+      const status=r[0]==="t"?resLabel(r):r==="pp"?(repick?"Your game was postponed. Pick another team.":"Postponed · counts as a win"):r==="w"?"Won ✓":r==="l"?"Lost":lockedIn?"Locked in":"You can change it until it locks";
       v.append(el("div",{class:"mypick"},teamLogo(pk.team),el("div",{},el("div",{class:"lbl",text:"✓ Your pick"}),
         el("strong",{text:teamName(pk.team)}),el("small",{text:`${pw?`${Math.round(pw.v)}% ${pw.est?"est.":"to win"} · `:""}${status}`}))));
       if(alive&&!S.pool.ended_at&&(!lockedIn||repick)&&r!=="w"&&r!=="l"){go.textContent=repick?"Pick another team":"Change your pick";v.append(go)}
@@ -1249,8 +1250,8 @@ function renderJourney(v,me,tab){
     const lbl=labelFor(d);
     let cls="",inner,what;
     if(isBye(d)){cls="rbye";inner="BYE";what="bye week"}
-    else if(pk){const r=pickResult(pk);cls=r==="w"||r==="pp"?"w":r==="l"?"l":"p";inner=teamLogo(pk.team,true);
-      what=`${teamName(pk.team)}, ${r==="w"?"won":r==="l"?"lost":r==="pp"?"postponed, counts as a win":"pending"}`}
+    else if(pk){const r=pickResult(pk);cls=r==="w"||r==="pp"||r==="tw"?"w":r==="l"||r==="tl"?"l":"p";inner=teamLogo(pk.team,true);
+      what=`${teamName(pk.team)}, ${r==="w"?"won":r==="l"?"lost":r[0]==="t"?resLabel(r).toLowerCase():r==="pp"?"postponed, counts as a win":"pending"}`}
     else if(weekDone(d)||gamesOn(d).every(g=>locked(d,g))){cls="miss";inner="–";what="no pick"}
     else if(me.lives_left>0&&!S.pool.ended_at){cls="open";inner="?";what="not picked yet"}
     else{cls="";inner="–";what="no pick"}
@@ -1406,7 +1407,7 @@ function renderStandings(v){
       for(const p of all.slice(hiddenN)){
         if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
         const res=pickResult(p);
-        hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":""}`},teamLogo(p.team,true),p.team));
+        hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":res[0]==="t"?` (${resLabel(res).toLowerCase()})`:""}`},teamLogo(p.team,true),p.team));
       }
       if(open&&all.length>3){const less=el("button",{class:"histmore",text:"Show less"});less.onclick=()=>{S.histOpen[r.user_id]=false;fillHist()};hist.append(less)}
     };
@@ -1438,14 +1439,17 @@ function appRules(){
     friday_10pm:nfl?"Picks are due Friday at 10:00 p.m. Eastern. Teams whose game has already started (like Thursday night) can’t be picked.":"Picks are due Friday at 10:00 p.m. Eastern, the night before the Saturday games."
   }[po.lock_mode]||"Each pick locks when that game starts.";
   return [
-    nfl?"Pick one NFL team to win each week (Thursday through Monday).":"Pick one NHL team to win each Saturday. Only Saturday games count.",
-    `Everyone starts with ${po.lives} ${po.lives===1?"life":"lives"}. A loss costs a life${nfl?" (a tie counts as a loss)":" (overtime and shootout losses count as losses)"}.`,
+    nfl?"Pick one NFL team to win each week. Every game in the week counts: Thursday, the Sunday games, Monday night, and any Wednesday, Friday, Saturday, holiday or international games.":"Pick one NHL team to win each Saturday. Only Saturday games count.",
+    `Everyone starts with ${po.lives} ${po.lives===1?"life":"lives"}. A loss costs a life${nfl?"":" (overtime and shootout losses count as losses)"}.`,
+    ...(nfl?[{loss:"If your team’s game ends in a tie, it counts as a loss.",push:"If your team’s game ends in a tie, it’s a push: you don’t lose a life, but it isn’t a win either.",win:"If your team’s game ends in a tie, it counts as a win."}[po.tie_rule||"loss"],
+      "A game only counts once it’s final, including overtime.",
+      "Teams on their bye week aren’t playing, so they can’t be picked that week."]:[]),
     `Each team can be picked ${po.max_picks_per_team===2?"twice":"once"} per season.`,
     deadline,
     "Everyone’s picks are revealed once the pick deadline passes.",
     po.postponed_rule==="repick"?"If your game is postponed or cancelled, you can re-pick from games that haven’t started. If you don’t, it counts as a win.":"If your game is postponed or cancelled, it counts as a win.",
     ...((po.bye_weeks||[]).length?[`Bye week${po.bye_weeks.length>1?"s":""} for everyone (no pick needed, no lives lost): ${po.bye_weeks.map(x=>new Date(x+"T12:00:00").toLocaleDateString([], {month:"long",day:"numeric"})).join(", ")}.`]:[]),
-    po.end_date?`The season’s last ${slate} is ${new Date(po.end_date+"T12:00:00").toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"})}.`:"The pool runs until one player is left.",
+    po.end_date?(nfl?`The pool covers the weeks up to ${new Date(po.end_date+"T12:00:00").toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"})}${(()=>{const wl=(S.games.find(g=>g.game_date===po.end_date)||{}).week_label;return wl?` (${wl})`:""})()}.`:`The season’s last ${slate} is ${new Date(po.end_date+"T12:00:00").toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"})}.`):"The pool runs until one player is left.",
     "If only one player is left, they win.",
     {split:"If more than one player is left when the season ends, they’re co-winners.",wins:"If more than one player is left when the season ends, the most wins takes it. Still tied? Co-winners.",underdog:"If more than one player is left when the season ends, whoever took the biggest risks (the lowest total win odds across their picks) wins."}[po.tiebreaker||"split"],
     po.missed_pick_strike?`Missing a ${slate} costs a life.`:`Missing a ${slate} doesn’t cost a life.`,
@@ -1644,10 +1648,11 @@ function renderCommish(v){
   const friendly=el("input",{type:"checkbox",checked:!!po.friendly});
   const postponed=el("select",{},...opt([["win","Counts as a win (no strike)"],["repick","Player can re-pick another game"]],po.postponed_rule||"win"));
   const endDate=el("input",{type:"date",value:po.end_date||""});
+  const tie=el("select",{},...opt([["loss","Counts as a loss (most common)"],["push","No life lost, no win (a push)"],["win","Counts as a win"]],po.tie_rule||"loss"));
   const tiebreak=el("select",{},...opt([["split","Co-winners share the title"],["wins","Most wins, then co-winners"],["underdog","Underdog: riskiest picks win"]],po.tiebreaker||"split"));
   const save=el("button",{class:"btn",text:"Save settings"});
   save.onclick=async()=>{save.disabled=true;
-    const{error}=await sb.from("pools").update({name:name.value.trim()||po.name,lives:+lives.value,max_picks_per_team:+reuse.value,lock_mode:lock.value,reveal_picks:"start",missed_pick_strike:missed.checked,revive_if_all_out:revive.checked,friendly:friendly.checked,postponed_rule:postponed.value,end_date:endDate.value||null,tiebreaker:tiebreak.value}).eq("id",po.id);
+    const{error}=await sb.from("pools").update({name:name.value.trim()||po.name,lives:+lives.value,max_picks_per_team:+reuse.value,lock_mode:lock.value,reveal_picks:"start",missed_pick_strike:missed.checked,revive_if_all_out:revive.checked,friendly:friendly.checked,postponed_rule:postponed.value,end_date:endDate.value||null,tiebreaker:tiebreak.value,tie_rule:tie.value}).eq("id",po.id);
     save.disabled=false;if(error)return toast(errText(error));toast("Settings saved");refresh()};
   v.append(el("div",{class:"panel"},el("h3",{text:"Pool settings"}),
     el("label",{class:"field"},el("span",{text:"Survivor pool name"}),name),
@@ -1656,6 +1661,7 @@ function renderCommish(v){
     el("label",{class:"field"},el("span",{text:"Pick deadline"}),lock),
     el("p",{class:"meta",style:"margin:-4px 0 14px",text:"Everyone’s picks are revealed once the pick deadline passes."}),
     el("label",{class:"field"},el("span",{text:"If a picked game is postponed or cancelled"}),postponed),
+    po.sport==="nfl"?el("label",{class:"field"},el("span",{text:"If a picked game ends in a tie"}),tie):null,
     el("label",{class:"field"},el("span",{text:"Season ends (last week that counts)"}),endDate,
       el("small",{class:"meta",style:"display:block;margin-top:4px",text:po.sport==="nfl"
         ?"Pick the Sunday of the last week that counts. Week 18 ends the regular season in early January; choose a later date to include the playoffs. Leave blank to keep going."
