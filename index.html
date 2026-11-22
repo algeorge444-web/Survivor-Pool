@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T20:45">
+<meta name="app-version" content="2026-11-22T20:55">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -974,7 +974,7 @@ function renderPool(tab){
     if(!["standings","picks","rules"].includes(tab)){tab="standings";try{history.replaceState(null,"",`#pool/${S.pool.id}/standings`)}catch{}}
     renderHeader([["standings","Standings"],["picks","All Picks"]]);
     const app=$("app");app.replaceChildren(el("div",{class:"note",style:"margin-bottom:12px",text:"👀 You’re spectating this pool. You can follow the standings and everyone’s picks once they’re revealed, but you’re not playing in it."}));
-    if(tab==="picks")renderAllPicks(app);else if(tab==="rules")renderRules(app);else renderStandings(app);
+    if(tab==="picks"){renderWinner(app);renderAllPicks(app)}else if(tab==="rules")renderRules(app);else renderStandings(app);
     return;
   }
   const tabs=[["saturday","My Team"],["standings","Standings"],["picks","All Picks"],["chat","Chat"]];
