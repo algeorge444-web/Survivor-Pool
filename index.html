@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T14:00">
+<meta name="app-version" content="2026-11-22T14:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -954,6 +954,7 @@ function renderSaturday(v){
 
   renderWinner(v);
   if(S.pool.ended_at)v.append(el("div",{class:"note",text:"This pool has ended. Picks are closed and the results are final."}));
+  if(!isBye(d)&&S.allPicks.some(p=>p.game_date===d&&p.user_id!==uid()&&!p.hidden))v.append(everyonePanel(d,"This week’s picks"));
   const bye=isBye(d);
   if(bye)v.append(el("div",{class:"bye"},el("div",{class:"ico",text:"🛋️"}),el("div",{},
     el("strong",{text:"Bye week for everyone"}),
@@ -1280,7 +1281,15 @@ function renderAllPicks(v){
     v.append(el("div",{class:"panel"},el("h3",{text:"Top 3"}),pop));
   }
 
-  const panel=el("div",{class:"panel"},el("h3",{text:"Everyone’s picks"}));
+  v.append(everyonePanel(d,"Everyone’s picks"));
+}
+
+// One week's picks: you first, then everyone else (most lives first).
+function everyonePanel(d,title){
+  const gs=gamesOn(d),allLocked=gs.length>0&&gs.every(g=>locked(d,g));
+  const picks=S.allPicks.filter(p=>p.game_date===d);
+  const rows=[...S.standings].sort((a,b)=>(b.user_id===uid())-(a.user_id===uid())||b.lives_left-a.lives_left||(a.display_name||"").localeCompare(b.display_name||""));
+  const panel=el("div",{class:"panel"},el("h3",{text:title}));
   for(const r of rows){
     const p=picks.find(x=>x.user_id===r.user_id);
     let pk;
@@ -1299,7 +1308,7 @@ function renderAllPicks(v){
         el("small",{text:`${r.strikes} strike${r.strikes===1?"":"s"} · ${r.lives_left<=0?"eliminated":`${r.lives_left} ${r.lives_left===1?"life":"lives"} left`}`})),
       pk));
   }
-  v.append(panel);
+  return panel;
 }
 
 /* ---------- Winner & tiebreakers ---------- */
