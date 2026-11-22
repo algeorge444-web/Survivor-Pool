@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-15T22:40">
+<meta name="app-version" content="2026-11-22T14:00">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -160,6 +160,7 @@ td .puck,.prow .puck{--w:18px;--h:13px;--t:6px}
 .popular{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .popular span{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:99px;padding:3px 10px 3px 4px;font-weight:600;font-size:.88rem}
 .popular .logo{width:22px;height:22px}
+.popular .medal{background:none;padding:0;font-size:1rem}
 .friendly{display:inline-flex;align-items:center;gap:6px;background:#F5C542;color:#12263A;font-weight:700;font-size:.82rem;padding:3px 10px;border-radius:99px;margin:-6px 0 14px}
 .badge.friendly-b{background:#F5C542;color:#12263A}
 .winner{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#F5C542,#E9A920);color:#12263A;border-radius:12px;padding:14px 16px;margin-bottom:16px}
@@ -1273,10 +1274,10 @@ function renderAllPicks(v){
   // Most popular picks among the ones that are visible
   if(visible.length){
     const c={};for(const p of visible)c[p.team]=(c[p.team]||0)+1;
-    const top=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const pop=el("div",{class:"popular"});
-    for(const [t,n] of top)pop.append(el("span",{},teamLogo(t,true),`${t} · ${n}`));
-    v.append(el("div",{class:"panel"},el("h3",{text:"Most picked"}),pop));
+    const top=Object.entries(c).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,3);
+    const pop=el("div",{class:"popular"});const medals=["🥇","🥈","🥉"];
+    top.forEach(([t,n],i)=>pop.append(el("span",{},el("span",{class:"medal",text:medals[i]}),teamLogo(t,true),`${t} · ${n}`)));
+    v.append(el("div",{class:"panel"},el("h3",{text:"Top 3"}),pop));
   }
 
   const panel=el("div",{class:"panel"},el("h3",{text:"Everyone’s picks"}));
