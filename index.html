@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T22:45">
+<meta name="app-version" content="2026-11-22T23:10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -340,6 +340,17 @@ tr.out td{opacity:.5}
 .ptnames{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;align-items:center;min-width:0;flex:1}
 .ptname{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;font-weight:800;font-size:1.02rem;color:#fff;padding:4px 11px;border-radius:8px;border:0;border-left:4px solid;background:rgba(255,255,255,.1);line-height:1.25}
 .ptname.you{background:linear-gradient(#F2C14E,#D9A332);color:#12263A;border-left-color:#fff}
+.gtop{align-items:center}
+.gtop .gside{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;opacity:.7;min-width:3.2em}
+.gtop .gside:last-child{text-align:right}
+.gstat{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;color:var(--ink,#12263A);padding:3px 11px;border-radius:999px;background:var(--chip)}
+.gstat b{font-weight:800;letter-spacing:.04em}
+.gstat.live{background:#FDECEC;color:#B3161E}
+.gstat.final{background:#12263A;color:#fff}
+.side .abbr{white-space:nowrap}
+.tscore{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:800;color:#8C98A6;display:inline-block;padding:0 7px;border-radius:7px;background:#EEF2F6}
+.tscore.lead{color:#fff;background:#12263A}
+.tscore.live.lead{background:#B3161E}
 </style>
 </head>
 <body>
@@ -1080,7 +1091,7 @@ function renderSaturday(v){
   for(const g of order){
     const card=el("div",{class:"game"+(myPick&&(g.away===myPick||g.home===myPick)?" has-pick":"")});
     const right=g.status==="postponed"?el("span",{class:"score",text:"Postponed"}):g.status==="final"?el("span",{class:"score",text:`Final ${g.away_score}–${g.home_score}${g.winner==="TIE"?" · tie":""}`}):g.status==="live"?el("span",{class:"score live"},el("span",{class:"livedot","aria-hidden":"true"}),`Live ${g.away_score??0}–${g.home_score??0}`,g.clock?el("small",{class:"clock",text:g.clock}):null):el("span",{text:S.pool.sport==="nfl"?new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}):fmtTime(g.start_time)});
-    card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
+    card.append(gameStatusTop(g));
     if(typeof pickersOf==="function"&&(typeof revealed==="undefined"||revealed)){const pt=pickedTop(g,pickersOf);if(pt)card.append(pt)}
     const sides=el("div",{class:"sides"});
     const wp=winPcts(g);
@@ -1098,7 +1109,7 @@ function renderSaturday(v){
         "aria-label":`${teamName(team)}${pct!=null?`, ${pct}% to win`:""}${isPick?", your pick":""}${maxed&&!isPick?", already used":""}`},
         teamLogo(team),
         el("div",{class:"info"},
-          el("span",{class:"abbr",text:team}),el("span",{class:"name",text:teamName(team)}),
+          abbrScore(g,team,cls),el("span",{class:"name",text:teamName(team)}),
           el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% ${wp.est?"est.":"to win"}`:"Odds soon"}),
           tag?el("div",{},el("span",{class:"tag",text:tag})):null));
       b.disabled=!canTap;
@@ -1317,6 +1328,27 @@ function lighten(hex){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h
   const c=[1,2,3].map(i=>parseInt(m[i],16));const l=(.299*c[0]+.587*c[1]+.114*c[2]);const k=l<110?(110-l)/110*.75+.25:0;
   return "#"+c.map(v=>Math.round(v+(255-v)*k).toString(16).padStart(2,"0")).join("")}
 
+// Top of a game card: status in the middle (live clock, final, start time).
+function gameStatusTop(g){
+  const nfl=S.pool.sport==="nfl";
+  let mid;
+  if(g.status==="live")mid=el("span",{class:"gstat live"},el("span",{class:"livedot","aria-hidden":"true"}),el("b",{text:"LIVE"}),g.clock?el("span",{text:` · ${g.clock}`}):null);
+  else if(g.status==="final")mid=el("span",{class:"gstat final"},el("b",{text:g.winner==="TIE"?"FINAL · TIE":"FINAL"}));
+  else if(g.status==="postponed")mid=el("span",{class:"gstat"},el("b",{text:"POSTPONED"}));
+  else mid=el("span",{class:"gstat"},nfl?new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}):fmtTime(g.start_time));
+  return el("div",{class:"top gtop"},el("span",{class:"gside",text:"Away"}),mid,el("span",{class:"gside",text:"Home"}));
+}
+// Team letters with the score beside them (score on the inside, toward the middle of the card).
+function abbrScore(g,team,cls){const sc=teamScore(g,team);const a=el("span",{class:"abbr"});
+  if(!sc){a.textContent=team;return a}
+  if(cls==="home")a.append(sc," ",team);else a.append(team," ",sc);return a}
+// A team's score beside its name, for live and finished games.
+function teamScore(g,team){
+  if(g.status!=="live"&&g.status!=="final")return null;
+  const sc=team===g.away?g.away_score:g.home_score,op=team===g.away?g.home_score:g.away_score;
+  const lead=sc!=null&&op!=null&&sc>op;
+  return el("span",{class:"tscore"+(lead?" lead":"")+(g.status==="live"?" live":""),"aria-label":`${team} ${sc??0}`,text:String(sc??0)});
+}
 // Shrink each name tag's text until it fits on one line (down to a readable minimum).
 function fitNames(root){
   for(const n of root.querySelectorAll(".ptname")){
@@ -1360,14 +1392,14 @@ function renderSpectateGames(v){
       :g.status==="final"?el("span",{class:"score",text:`Final ${g.away_score}–${g.home_score}${g.winner==="TIE"?" · tie":""}`})
       :g.status==="live"?el("span",{class:"score live"},el("span",{class:"livedot","aria-hidden":"true"}),`Live ${g.away_score??0}–${g.home_score??0}`,g.clock?el("small",{class:"clock",text:g.clock}):null)
       :el("span",{class:"score",text:new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})});
-    card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
+    card.append(gameStatusTop(g));
     if(typeof pickersOf==="function"&&(typeof revealed==="undefined"||revealed)){const pt=pickedTop(g,pickersOf);if(pt)card.append(pt)}
     const sides=el("div",{class:"sides"});const wp=winPcts(g);
     for(const [team,pct,cls] of [[g.away,wp&&wp.away,"away"],[g.home,wp&&wp.home,"home"]]){
       const n=pickersOf(team).length;
       const res=g.status==="final"&&g.winner?(g.winner===team?" won":" lost"):"";
       sides.append(el("div",{class:`side ${cls}${n?" picked":""}${res}`},teamLogo(team),
-        el("div",{class:"info"},el("span",{class:"abbr",text:team}),el("span",{class:"name",text:teamName(team)}),
+        el("div",{class:"info"},abbrScore(g,team,cls),el("span",{class:"name",text:teamName(team)}),
           el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% ${wp.est?"est.":"to win"}`:""}),
           n?el("div",{},el("span",{class:"tag",text:`${n} picked${res===" won"?" · won":res===" lost"?" · lost":""}`})):null)));
     }
