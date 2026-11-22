@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T14:20">
+<meta name="app-version" content="2026-11-22T14:40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -278,6 +278,9 @@ tr.out td{opacity:.5}
 .avpick.on{border-color:var(--blue)}
 .showpw{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;font-size:.9rem;color:var(--muted);cursor:pointer}
 .showpw input{width:18px;height:18px;accent-color:var(--blue)}
+.pickedby{border-top:1px solid var(--line);margin-top:10px;padding-top:8px;font-size:.88rem;display:grid;gap:6px}
+.pickedby>div{display:flex;align-items:center;gap:8px}
+.pickedby .logo{width:20px;height:20px;flex:none}
 </style>
 </head>
 <body>
@@ -954,7 +957,6 @@ function renderSaturday(v){
 
   renderWinner(v);
   if(S.pool.ended_at)v.append(el("div",{class:"note",text:"This pool has ended. Picks are closed and the results are final."}));
-  if(!isBye(d)&&S.allPicks.some(p=>p.game_date===d&&p.user_id!==uid()&&!p.hidden))v.append(everyonePanel(d,"This week’s picks"));
   const bye=isBye(d);
   if(bye)v.append(el("div",{class:"bye"},el("div",{class:"ico",text:"🛋️"}),el("div",{},
     el("strong",{text:"Bye week for everyone"}),
@@ -974,7 +976,18 @@ function renderSaturday(v){
 
   if(me&&alive&&!bye)renderPickOfWeek(v,d,counts,limit,myPick);
 
-  for(const g of gs){
+  // Once picks are revealed: your game first, then games others picked (most pickers first), then the rest.
+  const shown=S.allPicks.filter(p=>p.game_date===d&&!p.hidden&&p.team);
+  const revealed=shown.some(p=>p.user_id!==uid());
+  const nameOf=u=>{const r=S.standings.find(x=>x.user_id===u);return r?(u===uid()?"You":r.display_name):"Player"};
+  const pickersOf=team=>shown.filter(p=>p.team===team).sort((a,b)=>(b.user_id===uid())-(a.user_id===uid())||nameOf(a.user_id).localeCompare(nameOf(b.user_id))).map(p=>nameOf(p.user_id));
+  const order=revealed?[...gs].sort((a,b)=>{
+    const mine=g=>myPick&&(g.away===myPick||g.home===myPick)?1:0;
+    const n=g=>pickersOf(g.away).length+pickersOf(g.home).length;
+    return mine(b)-mine(a)||n(b)-n(a)||String(a.start_time).localeCompare(String(b.start_time));
+  }):gs;
+  if(revealed)v.append(el("p",{class:"meta",style:"margin:4px 0 8px",text:"Picks are in. Games are ordered: yours first, then the games people picked."}));
+  for(const g of order){
     const card=el("div",{class:"game"+(myPick&&(g.away===myPick||g.home===myPick)?" has-pick":"")});
     const right=g.status==="postponed"?el("span",{class:"score",text:"Postponed"}):g.status==="final"?el("span",{class:"score",text:`Final ${g.away_score}–${g.home_score}${g.winner==="TIE"?" · tie":""}`}):g.status==="live"?el("span",{class:"score",text:`Live ${g.away_score??0}–${g.home_score??0}`}):el("span",{text:S.pool.sport==="nfl"?new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}):fmtTime(g.start_time)});
     card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
@@ -1012,6 +1025,10 @@ function renderSaturday(v){
       card.append(el("div",{class:"bar","aria-hidden":"true",style:wp.est?"opacity:.55":""},
         el("span",{style:`width:${wp.away/t*100}%;background:${teamColor(g.away)}`}),
         el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})));
+    }
+    if(revealed){
+      const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
+      if(who.length)card.append(el("div",{class:"pickedby"},...who.map(([t,n])=>el("div",{},teamLogo(t,true),el("span",{},el("b",{text:`${t}: `}),n.join(", "))))));
     }
     const notes=matchupNotes(g);if(notes)card.append(notes);
     v.append(card);
