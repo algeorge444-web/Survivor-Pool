@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T16:10">
+<meta name="app-version" content="2026-11-22T19:00">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -102,6 +102,8 @@ main{padding:18px 18px 48px}
   background:radial-gradient(ellipse at 38% 35%,#5a5a5a 0,#2a2a2a 45%,#141414 80%);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .puck.lost{opacity:.18;filter:grayscale(1)}
+.football{display:inline-block;flex:none;line-height:0;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));transform:rotate(-12deg)}
+.football.lost{opacity:.2;filter:grayscale(1)}
 td .puck,.prow .puck{--w:18px;--h:13px;--t:6px}
 @media (prefers-color-scheme:dark){.puck::before{box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}.puck{filter:drop-shadow(0 0 1px rgba(255,255,255,.35))}.puck.lost{opacity:.25}}
 
@@ -398,7 +400,22 @@ const winPcts=g=>g.away_pct!=null&&g.home_pct!=null?{away:+g.away_pct,home:+g.ho
 const pickPct=pk=>{const g=pickGame(pk);if(!g)return null;const v=g.away===pk.team?g.away_pct:g.home_pct;return v==null?null:+v};
 const pickPctOrEst=pk=>{const g=pickGame(pk);if(!g)return null;const w=winPcts(g);return w?{v:g.away===pk.team?w.away:w.home,est:w.est}:null};
 
-function puckRow(left,total){const r=el("div",{class:"pucks","aria-label":`${left} of ${total} lives left`});for(let i=0;i<total;i++)r.append(el("span",{class:"puck"+(i<left?"":" lost")}));return r}
+// 3D football for NFL pools: shaded leather, white stripes and laces.
+const FOOTBALL_SVG=`<svg viewBox="0 0 44 28" width="34" height="22" aria-hidden="true"><defs>
+<radialGradient id="fbg" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#C77A45"/><stop offset=".55" stop-color="#8A4A22"/><stop offset="1" stop-color="#4A2410"/></radialGradient>
+<linearGradient id="fbs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<path d="M2 14C7 4 15 1.500 22 1.500S37 4 42 14c-5 10-13 12.500-20 12.500S7 24 2 14z" fill="url(#fbg)" stroke="#3A1C0C" stroke-width=".8"/>
+<path d="M8.500 6.500c-.900 2.200-.900 12.800 0 15M35.500 6.500c.900 2.200.900 12.800 0 15" fill="none" stroke="#F4EDE4" stroke-width="1.600" stroke-linecap="round"/>
+<path d="M15 10.500h14" stroke="#F4EDE4" stroke-width="1.500" stroke-linecap="round"/>
+<path d="M17 8.500v4M19.700 8.500v4M22.400 8.500v4M25.100 8.500v4M27.800 8.500v4" stroke="#F4EDE4" stroke-width="1.200" stroke-linecap="round"/>
+<path d="M7 11C11 5 17 3.500 22 3.500S32 5 36 9" fill="none" stroke="url(#fbs)" stroke-width="3" stroke-linecap="round"/></svg>`;
+function puckRow(left,total){const r=el("div",{class:"pucks","aria-label":`${left} of ${total} lives left`});
+  const nfl=S.pool&&S.pool.sport==="nfl";
+  for(let i=0;i<total;i++){
+    if(nfl){const b=el("span",{class:"football"+(i<left?"":" lost")});b.innerHTML=FOOTBALL_SVG;r.append(b)}
+    else r.append(el("span",{class:"puck"+(i<left?"":" lost")}));
+  }
+  return r}
 
 /* ---------- Routing ---------- */
 function parseRoute(){const p=location.hash.slice(1).split("/");if(p[0]==="join"&&p[1])return{view:"join",code:decodeURIComponent(p[1])};if(p[0]==="pool"&&p[1])return{view:"pool",id:p[1],tab:["picks","standings","rules","chat","commish"].includes(p[2])?p[2]:"saturday"};if(p[0]==="profile")return{view:"profile"};return{view:"home"}}
