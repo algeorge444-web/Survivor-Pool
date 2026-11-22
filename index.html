@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T19:30">
+<meta name="app-version" content="2026-11-22T19:45">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -380,11 +380,11 @@ const weekDone=d=>{const gs=gamesOn(d);return gs.length>0&&gs.every(g=>g.status=
 const resultOf=(d,t)=>{const g=gameFor(d,t);return g&&g.status==="final"&&g.winner?(g.winner===t?"w":"l"):"p"};
 // Result of a saved pick, using the exact game it was made on (games can move weeks).
 const pickGame=pk=>pk&&pk.game_id!=null?S.games.find(x=>String(x.id)===String(pk.game_id)):null;
-const pickResult=pk=>{const g=pickGame(pk);if(!g)return"p";if(g.status==="postponed"||g.game_date!==pk.game_date)return"pp";
+const pickResult=pk=>{if(S.pool&&S.pool.start_date&&pk&&pk.game_date<S.pool.start_date)return"pre";const g=pickGame(pk);if(!g)return"p";if(g.status==="postponed"||g.game_date!==pk.game_date)return"pp";
   if(g.status==="final"&&g.winner==="TIE"){const t=(S.pool&&S.pool.tie_rule)||"loss";return t==="win"?"tw":t==="push"?"t":"tl"}
   return g.status==="final"&&g.winner?(g.winner===pk.team?"w":"l"):"p"};
-const resLabel=r=>({w:"Won",l:"Lost",pp:"Postponed · no strike",p:"Pending",tl:"Tie · counts as a loss",tw:"Tie · counts as a win",t:"Tie · no life lost"})[r];
-const resClass=r=>r==="pp"||r==="tw"?"w":r==="tl"?"l":r==="p"||r==="t"?"":r;
+const resLabel=r=>({w:"Won",l:"Lost",pp:"Postponed · no strike",p:"Pending",tl:"Tie · counts as a loss",tw:"Tie · counts as a win",t:"Tie · no life lost",pre:"Before the pool started counting"})[r];
+const resClass=r=>r==="pp"||r==="tw"?"w":r==="tl"?"l":r==="p"||r==="t"||r==="pre"?"":r;
 // Early estimate until sportsbooks post odds: each team's record (log5) plus home advantage.
 function estimate(g){
   const A=S.stats&&S.stats[g.away],H=S.stats&&S.stats[g.home];if(!A||!H||A.pct==null||H.pct==null)return null;
@@ -1407,7 +1407,7 @@ function renderStandings(v){
       for(const p of all.slice(hiddenN)){
         if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
         const res=pickResult(p);
-        hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":res[0]==="t"?` (${resLabel(res).toLowerCase()})`:""}`},teamLogo(p.team,true),p.team));
+        hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="pre"?" (before the pool started counting)":res==="w"?" (win)":res==="l"?" (loss)":res[0]==="t"?` (${resLabel(res).toLowerCase()})`:""}`},teamLogo(p.team,true),p.team));
       }
       if(open&&all.length>3){const less=el("button",{class:"histmore",text:"Show less"});less.onclick=()=>{S.histOpen[r.user_id]=false;fillHist()};hist.append(less)}
     };
