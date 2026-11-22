@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T21:20">
+<meta name="app-version" content="2026-11-22T21:50">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -325,13 +325,14 @@ tr.out td{opacity:.5}
 }
 @media (min-width:552px){.wbelow{display:none}}
 
-.field{margin-top:10px;padding:0 12px 12px}
-.fieldsvg svg{display:block;width:100%;height:auto;border-radius:6px}
-.fieldtxt{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px;font-size:.88rem}
-.fieldtxt .poss{display:inline-flex;align-items:center;gap:5px}
-.fieldtxt .poss .logo{width:22px;height:22px}
-.fieldtxt .rz{background:#D7262E;color:#fff;font-weight:700;font-size:.72rem;padding:1px 7px;border-radius:10px}
-.lastplay{font-size:.8rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.field{margin:10px 12px 12px;padding:12px 10px 10px;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#1E3766 0%,#0F2244 55%,#0A1830 100%);color:#DCE6F2}
+.fieldstage{perspective:900px;perspective-origin:50% 0%;padding:2px 4px 0}
+.fieldsvg{transform:rotateX(24deg);transform-origin:50% 100%;filter:drop-shadow(0 10px 12px rgba(0,0,0,.45))}
+.fieldsvg svg{display:block;width:100%;height:auto}
+.fieldbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px;margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.06);font-size:.82rem;letter-spacing:.01em}
+.fieldbar b{font-weight:800}
+.fieldbar .rz{margin-left:6px;background:#D7262E;color:#fff;font-weight:800;font-size:.68rem;padding:1px 6px;border-radius:9px}
+.lastplay{font-size:.78rem;color:#9FB2C8;margin-top:6px;line-height:1.35;padding:0 4px}
 </style>
 </head>
 <body>
@@ -1246,41 +1247,69 @@ function whoBlock(me){
   return wrap;
 }
 
-// Live NFL drive: a mini field with the ball, line to gain, and who has it.
+// Live NFL drive: a tilted field with glowing end zones, the ball, line of scrimmage and line to gain.
 // Away team's end zone on the left, home team's on the right.
 function fieldEl(g){
-  const sit=g.situation||{};const W=120,H=26;
+  const sit=g.situation||{};const id=String(g.id).replace(/\W/g,"");
+  const W=1200,H=470,Y=10;                        // 10 units per yard; 100-unit end zones
   const yl=sit.yl;const known=typeof yl==="number"&&yl>=0&&yl<=100;
-  const x=known?10+(100-yl):null;                 // yards from the left (away) goal line, plus the 10-yd end zone
-  const dir=sit.poss===g.away?1:sit.poss===g.home?-1:0;   // away attacks right, home attacks left
-  const m=/&\s*(\d+|Goal)/i.exec(sit.down||"");
-  const togo=m?(/goal/i.test(m[1])?null:+m[1]):null;
-  const fd=known&&dir&&togo!=null?Math.max(10,Math.min(110,x+dir*togo)):null;
+  const X=v=>100+v*Y;                             // yards from the away goal line -> x
+  const bx=known?X(100-yl):null;
+  const dir=sit.poss===g.away?1:sit.poss===g.home?-1:0;
+  const m=/&\s*(\d+|Goal)/i.exec(sit.down||"");const togo=m?(/goal/i.test(m[1])?null:+m[1]):null;
+  const fd=known&&dir&&togo!=null?X(Math.max(0,Math.min(100,(100-yl)+dir*togo))):null;
+  const nick=a=>{const n=teamName(a)||a;return n.split(" ").pop().toUpperCase()};
   const ca=teamColor(g.away),ch=teamColor(g.home);
-  let lines="";for(let y=20;y<=100;y+=10)lines+=`<line x1="${y}" y1="2" x2="${y}" y2="${H-2}" stroke="#fff" stroke-opacity="${y===60?.7:.28}" stroke-width="${y===60?.8:.5}"/>`;
-  const num=(y,t)=>`<text x="${y}" y="${H-4}" font-size="3.6" text-anchor="middle" fill="#fff" fill-opacity=".55" font-family="Arial,sans-serif" font-weight="700">${t}</text>`;
-  let nums="";[[20,10],[30,20],[40,30],[50,40],[60,50],[70,40],[80,30],[90,20],[100,10]].forEach(([y,t])=>nums+=num(y,t));
-  const ball=known?`<g transform="translate(${x} ${H/2})${dir<0?" scale(-1 1)":""}">
-      ${dir?`<path d="M3 0h6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><path d="M7.600 -2.200L10 0 7.600 2.200" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`:""}
-      <ellipse rx="3.300" ry="2.100" fill="#8B4A22" stroke="#fff" stroke-width=".6"/><path d="M-1.300 0h2.600" stroke="#fff" stroke-width=".45"/></g>`:"";
-  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${(sit.poss?sit.poss+" ball":"")+(sit.down?", "+sit.down:"")+(sit.spot?" at "+sit.spot:"")}">
-    <rect x="0" y="0" width="${W}" height="${H}" rx="3" fill="#2E7D32"/>
-    <rect x="10" y="0" width="100" height="${H}" fill="${sit.rz?"#3B8A3F":"#2E7D32"}"/>
-    <rect x="0" y="0" width="10" height="${H}" rx="3" fill="${ca}"/><rect x="110" y="0" width="10" height="${H}" rx="3" fill="${ch}"/>
-    <text x="5" y="${H/2}" font-size="5" fill="#fff" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 5 ${H/2})" font-family="Arial,sans-serif">${g.away}</text>
-    <text x="115" y="${H/2}" font-size="5" fill="#fff" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(90 115 ${H/2})" font-family="Arial,sans-serif">${g.home}</text>
-    ${lines}${nums}
-    ${known?`<line x1="${x}" y1="1" x2="${x}" y2="${H-1}" stroke="#4FA3FF" stroke-width=".9"/>`:""}
-    ${fd!=null?`<line x1="${fd}" y1="1" x2="${fd}" y2="${H-1}" stroke="#FFD23F" stroke-width=".9"/>`:""}
+  let grass="";for(let k=0;k<20;k++)grass+=`<rect x="${X(k*5)}" y="0" width="${5*Y}" height="${H}" fill="${k%2?"#3F8A3C":"#4A9845"}"/>`;
+  let lines="",hashes="",nums="";
+  for(let v=5;v<100;v+=5)lines+=`<line x1="${X(v)}" y1="14" x2="${X(v)}" y2="${H-14}" stroke="#fff" stroke-opacity="${v===50?.95:.75}" stroke-width="${v%10?2:2.6}"/>`;
+  for(let v=1;v<100;v++)if(v%5)hashes+=`<line x1="${X(v)}" y1="18" x2="${X(v)}" y2="28" stroke="#fff" stroke-opacity=".7" stroke-width="1.6"/><line x1="${X(v)}" y1="${H-28}" x2="${X(v)}" y2="${H-18}" stroke="#fff" stroke-opacity=".7" stroke-width="1.6"/><line x1="${X(v)}" y1="${H*.38}" x2="${X(v)}" y2="${H*.38+8}" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/><line x1="${X(v)}" y1="${H*.62-8}" x2="${X(v)}" y2="${H*.62}" stroke="#fff" stroke-opacity=".55" stroke-width="1.4"/>`;
+  for(let v=10;v<100;v+=10){const t=v<=50?v:100-v;
+    const tri=(cx,cy,flip)=>v===50?"":`<path d="M${cx+(v<50?-1:1)*(flip?-1:1)*30} ${cy-6}l${(v<50?-1:1)*(flip?-1:1)*-0} 0l${(v<50?-1:1)*(flip?-1:1)*-9} 6 ${(v<50?-1:1)*(flip?-1:1)*9} 6z" fill="#fff" fill-opacity=".85"/>`;
+    nums+=`<text x="${X(v)}" y="${H-78}" font-size="46" font-weight="800" fill="#fff" fill-opacity=".9" text-anchor="middle" font-family="'Saira Condensed','Arial Narrow',Arial,sans-serif">${t}</text>`+tri(X(v),H-94,false);
+    nums+=`<g transform="rotate(180 ${X(v)} 78)"><text x="${X(v)}" y="94" font-size="46" font-weight="800" fill="#fff" fill-opacity=".9" text-anchor="middle" font-family="'Saira Condensed','Arial Narrow',Arial,sans-serif">${t}</text>${tri(X(v),78,true)}</g>`}
+  const endzone=(x,c,abbr,rot)=>`<g><rect x="${x+6}" y="10" width="88" height="${H-20}" rx="6" fill="${c}" fill-opacity=".9"/>
+    <rect x="${x+6}" y="10" width="88" height="${H-20}" rx="6" fill="url(#ezsh${id})"/>
+    <rect x="${x+6}" y="10" width="88" height="${H-20}" rx="6" fill="none" stroke="${c}" stroke-width="9" filter="url(#glow${id})"/>
+    <rect x="${x+6}" y="10" width="88" height="${H-20}" rx="6" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="2"/>
+    <text x="${x+50}" y="${H/2}" font-size="${nick(abbr).length>8?52:66}" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="central" letter-spacing="2" transform="rotate(${rot} ${x+50} ${H/2})" font-family="'Saira Condensed','Arial Narrow',Arial,sans-serif" stroke="rgba(0,0,0,.35)" stroke-width="1.5">${nick(abbr)}</text>
+    <text x="${x+50}" y="40" font-size="26" font-weight="800" fill="#fff" fill-opacity=".85" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif">${abbr}</text>
+    <text x="${x+50}" y="${H-40}" font-size="26" font-weight="800" fill="#fff" fill-opacity=".85" text-anchor="middle" dominant-baseline="central" font-family="Arial,sans-serif">${abbr}</text></g>`;
+  const post=x=>`<g stroke="#F5D33D" stroke-width="5" stroke-linecap="round" fill="none"><path d="M${x} ${H/2-45}V${H/2+45}"/><path d="M${x} ${H/2-45}h${x<W/2?-14:14}M${x} ${H/2+45}h${x<W/2?-14:14}"/></g>`;
+  const glowLine=(x,c)=>`<line x1="${x}" y1="6" x2="${x}" y2="${H-6}" stroke="${c}" stroke-width="22" stroke-opacity=".55" filter="url(#glow${id})"/><line x1="${x}" y1="6" x2="${x}" y2="${H-6}" stroke="${c}" stroke-width="7"/><line x1="${x}" y1="6" x2="${x}" y2="${H-6}" stroke="#fff" stroke-opacity=".6" stroke-width="2"/>`;
+  const ball=known?`<g transform="translate(${bx} ${H/2})${dir<0?" scale(-1 1)":""}">
+      <ellipse rx="60" ry="22" fill="#000" fill-opacity=".25" cy="16"/>
+      ${dir?`<path d="M34 0h50" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M70 -15L86 0 70 15" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`:""}
+      <ellipse rx="30" ry="17" fill="url(#ball${id})" stroke="#3A1C0C" stroke-width="2"/>
+      <path d="M-11 0h22M-7 -5v10M-2.300 -5v10M2.300 -5v10M7 -5v10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M-24 -5c3-6 7-8 10-9M24 -5c-3-6-7-8-10-9" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>`:"";
+  const svg=`<svg viewBox="-30 -6 ${W+60} ${H+12}" role="img" aria-label="${(sit.poss?sit.poss+" ball":"")+(sit.down?", "+sit.down:"")+(sit.spot?" at "+sit.spot:"")}">
+    <defs><filter id="glow${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+      <linearGradient id="ezsh${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".25"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+      <radialGradient id="ball${id}" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#C77A45"/><stop offset=".6" stop-color="#8A4A22"/><stop offset="1" stop-color="#4A2410"/></radialGradient></defs>
+    <rect x="-24" y="-4" width="${W+48}" height="${H+8}" rx="10" fill="#2F6B2D"/>
+    ${grass}
+    <rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#fff" stroke-width="6"/>
+    ${post(-12)}${post(W+12)}
+    ${endzone(0,ca,g.away,-90)}${endzone(W-100,ch,g.home,90)}
+    ${lines}${hashes}${nums}
+    <line x1="100" y1="0" x2="100" y2="${H}" stroke="#fff" stroke-width="5"/><line x1="${W-100}" y1="0" x2="${W-100}" y2="${H}" stroke="#fff" stroke-width="5"/>
+    ${known?glowLine(bx,"#22D3EE"):""}${fd!=null?glowLine(fd,"#FFE135"):""}
     ${ball}</svg>`;
   const wrap=el("div",{class:"field"});
-  const pic=el("div",{class:"fieldsvg"});pic.innerHTML=svg;wrap.append(pic);
-  const who=sit.poss?el("span",{class:"poss"},teamLogo(sit.poss,true),el("b",{text:`${sit.poss} ball`})):null;
-  const detail=[sit.down,sit.spot?`at ${sit.spot}`:""].filter(Boolean).join(" ");
-  wrap.append(el("div",{class:"fieldtxt"},who,detail?el("span",{text:detail}):null,sit.rz?el("span",{class:"rz",text:"Red zone"}):null));
+  const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
+  const ac=g.away_score??0,hc=g.home_score??0;
+  wrap.append(el("div",{class:"fieldbar"},
+    el("span",{},"SCORE: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${ac}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${hc}`})),
+    g.clock?el("span",{text:g.clock.toUpperCase()}):null,
+    el("span",{},sit.poss?el("b",{text:`${sit.poss} ball · `}):"",[sit.down,sit.spot?`at ${sit.spot}`:""].filter(Boolean).join(" ")||"—",sit.rz?el("span",{class:"rz",text:"RED ZONE"}):null)));
   if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
   return wrap;
 }
+// Brighter version of a team colour, readable on navy.
+function lighten(hex){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex||"");if(!m)return"#fff";
+  const c=[1,2,3].map(i=>parseInt(m[i],16));const l=(.299*c[0]+.587*c[1]+.114*c[2]);const k=l<110?(110-l)/110*.75+.25:0;
+  return "#"+c.map(v=>Math.round(v+(255-v)*k).toString(16).padStart(2,"0")).join("")}
 
 // "Your Picks": the first page players see. This week's pick at a glance, lives, and history.
 function renderMine(v){
