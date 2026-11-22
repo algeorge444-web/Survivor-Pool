@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T15:20">
+<meta name="app-version" content="2026-11-22T15:30">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1321,7 +1321,7 @@ function everyonePanel(d,title){
     else if(p){
       const res=pickResult(p);
       pk=el("div",{class:"pk"},el("div",{},el("strong",{text:teamName(p.team)}),
-        el("span",{class:"res "+resClass(res),text:resLabel(res)})),teamLogo(p.team,true));
+        el("span",{class:"res "+resClass(res),text:res==="p"?(((pickGame(p)||{}).status==="live")?"In progress":"Upcoming"):resLabel(res)})),teamLogo(p.team,true));
     }else{
       const missed=weekDone(d)&&S.pool.missed_pick_strike;
       pk=el("div",{class:"pk"},el("div",{},el("strong",{text:r.lives_left<=0&&!missed?"Eliminated":allLocked||weekDone(d)?"No pick":"Not picked yet"}),
