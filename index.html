@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T23:55">
+<meta name="app-version" content="2026-11-23T00:05">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1025,6 +1025,7 @@ async function loadPool(id,quiet){
   S.pool=pool;S.games=games.data||[];S.myPicks=mine.data||[];S.standings=st.data||[];S.allPicks=all.data||[];S.pending=pend.data||[];
   S.stats={};for(const t of ts.data||[])S.stats[t.team]=t;
   const weeks=weekList();
+  if(!sameWeek){S.picksIdx=null;S.gamesIdx=null}   // each pool opens on its own current week
   if(!sameWeek||S.weekIdx<0||S.weekIdx>=weeks.length){const i=weeks.findIndex(d=>!weekDone(d)&&!(pool.bye_weeks||[]).includes(d));S.weekIdx=i===-1?weeks.length-1:i}
   S.loadedPool=id;
   S.spectator=!isC&&!S.standings.some(r=>r.user_id===uid());
