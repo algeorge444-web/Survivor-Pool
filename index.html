@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T15:40">
+<meta name="app-version" content="2026-11-22T15:50">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -289,6 +289,7 @@ tr.out td{opacity:.5}
 .livedot{width:8px;height:8px;border-radius:50%;background:#D7262E;animation:livepulse 1.4s ease-in-out infinite}
 @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.livedot{animation:none}}
+.histmore{border:2px dashed var(--line);background:none;border-radius:9px;padding:0 10px;min-height:40px;font:inherit;font-size:.82rem;font-weight:700;color:var(--blue);cursor:pointer}
 </style>
 </head>
 <body>
@@ -1377,11 +1378,22 @@ function renderStandings(v){
   const tb=el("tbody");
   for(const r of rows){
     const hist=el("div",{class:"hist"});
-    for(const p of S.allPicks.filter(x=>x.user_id===r.user_id).sort((a,b)=>a.game_date.localeCompare(b.game_date))){
-      if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
-      const res=pickResult(p);
-      hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":""}`},teamLogo(p.team,true),p.team));
-    }
+    // Last 3 weeks by default; the rest is one tap away.
+    const all=S.allPicks.filter(x=>x.user_id===r.user_id).sort((a,b)=>a.game_date.localeCompare(b.game_date));
+    S.histOpen=S.histOpen||{};
+    const fillHist=()=>{
+      hist.replaceChildren();
+      const open=S.histOpen[r.user_id],hiddenN=open?0:Math.max(0,all.length-3);
+      if(hiddenN){const more=el("button",{class:"histmore","aria-label":`Show ${hiddenN} earlier pick${hiddenN===1?"":"s"}`,text:`+${hiddenN} more`});
+        more.onclick=()=>{S.histOpen[r.user_id]=true;fillHist()};hist.append(more)}
+      for(const p of all.slice(hiddenN)){
+        if(p.hidden){hist.append(el("span",{title:slateTitle(p.game_date),text:"Picked"}));continue}
+        const res=pickResult(p);
+        hist.append(el("span",{class:resClass(res),title:`${slateTitle(p.game_date)}: ${teamName(p.team)}${res==="w"?" (win)":res==="l"?" (loss)":""}`},teamLogo(p.team,true),p.team));
+      }
+      if(open&&all.length>3){const less=el("button",{class:"histmore",text:"Show less"});less.onclick=()=>{S.histOpen[r.user_id]=false;fillHist()};hist.append(less)}
+    };
+    fillHist();
     tb.append(el("tr",{class:r.lives_left<=0?"out":""},
       el("td",{},el("div",{style:"font-weight:600;display:flex;align-items:center;gap:8px"},avatarEl(r.avatar,r.team_name,28),el("span",{text:(r.display_name||"Player")+(r.user_id===uid()?" (you)":"")+(r.is_commissioner?" · commissioner":"")})),
         el("div",{class:"meta",style:"margin:0",text:`${r.wins}–${r.losses} · ${r.strikes} strike${r.strikes===1?"":"s"}${r.revived?` · ${r.revived} life${r.revived===1?"":"s"} given back`:""}${r.lives_left<=0?" · out":""}`}),hist),
