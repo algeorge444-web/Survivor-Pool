@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T20:55">
+<meta name="app-version" content="2026-11-22T21:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -325,6 +325,13 @@ tr.out td{opacity:.5}
 }
 @media (min-width:552px){.wbelow{display:none}}
 
+.field{margin-top:10px;padding:0 12px 12px}
+.fieldsvg svg{display:block;width:100%;height:auto;border-radius:6px}
+.fieldtxt{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px;font-size:.88rem}
+.fieldtxt .poss{display:inline-flex;align-items:center;gap:5px}
+.fieldtxt .poss .logo{width:22px;height:22px}
+.fieldtxt .rz{background:#D7262E;color:#fff;font-weight:700;font-size:.72rem;padding:1px 7px;border-radius:10px}
+.lastplay{font-size:.8rem;color:var(--muted);margin-top:4px;line-height:1.35}
 </style>
 </head>
 <body>
@@ -1099,6 +1106,7 @@ function renderSaturday(v){
         el("span",{style:`width:${wp.away/t*100}%;background:${teamColor(g.away)}`}),
         el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})));
     }
+    if(S.pool.sport==="nfl"&&g.status==="live"&&g.situation)card.append(fieldEl(g));
     if(revealed){
       const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
       if(who.length)card.append(el("div",{class:"pickedby"},...who.map(([t,n])=>el("div",{},teamLogo(t,true),el("span",{},el("b",{text:`${t}: `}),n.join(", "))))));
@@ -1235,6 +1243,42 @@ function whoBlock(me){
       el("small",{class:"meta",style:"display:block;margin-top:4px",text:"You can change this until your first pick locks."}));
     inp.focus();inp.select();
   };
+  return wrap;
+}
+
+// Live NFL drive: a mini field with the ball, line to gain, and who has it.
+// Away team's end zone on the left, home team's on the right.
+function fieldEl(g){
+  const sit=g.situation||{};const W=120,H=26;
+  const yl=sit.yl;const known=typeof yl==="number"&&yl>=0&&yl<=100;
+  const x=known?10+(100-yl):null;                 // yards from the left (away) goal line, plus the 10-yd end zone
+  const dir=sit.poss===g.away?1:sit.poss===g.home?-1:0;   // away attacks right, home attacks left
+  const m=/&\s*(\d+|Goal)/i.exec(sit.down||"");
+  const togo=m?(/goal/i.test(m[1])?null:+m[1]):null;
+  const fd=known&&dir&&togo!=null?Math.max(10,Math.min(110,x+dir*togo)):null;
+  const ca=teamColor(g.away),ch=teamColor(g.home);
+  let lines="";for(let y=20;y<=100;y+=10)lines+=`<line x1="${y}" y1="2" x2="${y}" y2="${H-2}" stroke="#fff" stroke-opacity="${y===60?.7:.28}" stroke-width="${y===60?.8:.5}"/>`;
+  const num=(y,t)=>`<text x="${y}" y="${H-4}" font-size="3.6" text-anchor="middle" fill="#fff" fill-opacity=".55" font-family="Arial,sans-serif" font-weight="700">${t}</text>`;
+  let nums="";[[20,10],[30,20],[40,30],[50,40],[60,50],[70,40],[80,30],[90,20],[100,10]].forEach(([y,t])=>nums+=num(y,t));
+  const ball=known?`<g transform="translate(${x} ${H/2})${dir<0?" scale(-1 1)":""}">
+      ${dir?`<path d="M3 0h6" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/><path d="M7.600 -2.200L10 0 7.600 2.200" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`:""}
+      <ellipse rx="3.300" ry="2.100" fill="#8B4A22" stroke="#fff" stroke-width=".6"/><path d="M-1.300 0h2.600" stroke="#fff" stroke-width=".45"/></g>`:"";
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${(sit.poss?sit.poss+" ball":"")+(sit.down?", "+sit.down:"")+(sit.spot?" at "+sit.spot:"")}">
+    <rect x="0" y="0" width="${W}" height="${H}" rx="3" fill="#2E7D32"/>
+    <rect x="10" y="0" width="100" height="${H}" fill="${sit.rz?"#3B8A3F":"#2E7D32"}"/>
+    <rect x="0" y="0" width="10" height="${H}" rx="3" fill="${ca}"/><rect x="110" y="0" width="10" height="${H}" rx="3" fill="${ch}"/>
+    <text x="5" y="${H/2}" font-size="5" fill="#fff" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 5 ${H/2})" font-family="Arial,sans-serif">${g.away}</text>
+    <text x="115" y="${H/2}" font-size="5" fill="#fff" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(90 115 ${H/2})" font-family="Arial,sans-serif">${g.home}</text>
+    ${lines}${nums}
+    ${known?`<line x1="${x}" y1="1" x2="${x}" y2="${H-1}" stroke="#4FA3FF" stroke-width=".9"/>`:""}
+    ${fd!=null?`<line x1="${fd}" y1="1" x2="${fd}" y2="${H-1}" stroke="#FFD23F" stroke-width=".9"/>`:""}
+    ${ball}</svg>`;
+  const wrap=el("div",{class:"field"});
+  const pic=el("div",{class:"fieldsvg"});pic.innerHTML=svg;wrap.append(pic);
+  const who=sit.poss?el("span",{class:"poss"},teamLogo(sit.poss,true),el("b",{text:`${sit.poss} ball`})):null;
+  const detail=[sit.down,sit.spot?`at ${sit.spot}`:""].filter(Boolean).join(" ");
+  wrap.append(el("div",{class:"fieldtxt"},who,detail?el("span",{text:detail}):null,sit.rz?el("span",{class:"rz",text:"Red zone"}):null));
+  if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
   return wrap;
 }
 
