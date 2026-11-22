@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T23:10">
+<meta name="app-version" content="2026-11-22T23:40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -325,7 +325,7 @@ tr.out td{opacity:.5}
 }
 @media (min-width:552px){.wbelow{display:none}}
 
-.field{margin:10px 12px 12px;padding:12px 10px 10px;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#1E3766 0%,#0F2244 55%,#0A1830 100%);color:#DCE6F2}
+.nflfield{margin:10px 12px 12px;padding:12px 10px 10px;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#1E3766 0%,#0F2244 55%,#0A1830 100%);color:#DCE6F2}
 .fieldstage{perspective:900px;perspective-origin:50% 0%;padding:2px 4px 0}
 .fieldsvg{transform:rotateX(24deg);transform-origin:50% 100%;filter:drop-shadow(0 10px 12px rgba(0,0,0,.45))}
 .fieldsvg svg{display:block;width:100%;height:auto}
@@ -351,6 +351,39 @@ tr.out td{opacity:.5}
 .tscore{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:800;color:#8C98A6;display:inline-block;padding:0 7px;border-radius:7px;background:#EEF2F6}
 .tscore.lead{color:#fff;background:#12263A}
 .tscore.live.lead{background:#B3161E}
+.chero{background:linear-gradient(135deg,#12263A 0%,#1E3F66 100%);color:#fff;border-radius:16px;padding:18px 16px 14px;margin-bottom:14px;box-shadow:0 6px 18px rgba(18,38,58,.25)}
+.chead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ckicker{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#F2C14E;font-weight:800}
+.chero h2{margin:2px 0 2px;font-size:1.55rem;line-height:1.1;color:#fff}
+.csub{font-size:.85rem;color:#A9BCCD}
+.cbadge{flex:none;font-size:.72rem;font-weight:800;background:rgba(242,193,78,.18);color:#F2C14E;border:1px solid rgba(242,193,78,.5);padding:3px 9px;border-radius:999px}
+.cstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.cstat{background:rgba(255,255,255,.08);border-radius:10px;padding:8px 6px;text-align:center}
+.cstat b{display:block;font-family:"Saira Condensed","Arial Narrow",sans-serif;font-size:1.6rem;line-height:1}
+.cstat span{display:block;font-size:.7rem;color:#C9D6E3;margin-top:3px;line-height:1.2}
+.cstat.warn b{color:#F2C14E}
+.cquicks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.cquick{display:flex;flex-direction:column;align-items:center;gap:2px;background:#fff;color:#12263A;border:0;border-radius:10px;padding:8px 4px;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer}
+.cquick .ci{font-size:1.2rem}
+.csec{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.csec>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer}
+.csec>summary::-webkit-details-marker{display:none}
+.csi{flex:none;width:40px;height:40px;border-radius:11px;background:#EEF3F8;display:flex;align-items:center;justify-content:center;font-size:1.25rem}
+.cst{flex:1;min-width:0}
+.cst b{display:block;font-size:1.02rem}
+.cst small{display:block;color:var(--muted);font-size:.8rem;margin-top:1px}
+.chev{flex:none;font-size:1.6rem;line-height:1;color:var(--muted);transition:transform .2s}
+.csec[open]>summary .chev{transform:rotate(90deg)}
+.csec[open]>summary{border-bottom:1px solid var(--line)}
+.csbody{padding:4px 14px 6px}
+.csbody input,.csbody select,.csbody textarea{box-sizing:border-box;max-width:100%}
+.csbody .row{min-width:0}
+.csbody>.panel{border:0;box-shadow:none;background:none;padding:12px 0;margin:0;border-radius:0}
+.csbody>.panel+.panel{border-top:1px dashed var(--line)}
+.csubhead{font-size:1rem!important;margin:0 0 6px!important}
+.csec.danger .csi{background:#FDECEC}
+.csec.danger .cst b{color:#B3161E}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
 </style>
 </head>
 <body>
@@ -1006,7 +1039,7 @@ function renderPool(tab){
   }
   requestAnimationFrame(()=>fitNames($("app")));
   const tabs=[["saturday","My Team"],["standings","Standings"],["picks","All Picks"],["chat","Chat"]];
-  if(isCommish())tabs.push(["commish","Commish"]);
+  if(isCommish())tabs.push(["commish","Commish Tools"]);
   if(tab==="commish"&&!isCommish())tab="saturday";
   renderHeader(tabs);
   const app=$("app");app.replaceChildren();
@@ -1017,7 +1050,7 @@ function renderPool(tab){
   else if(tab==="picks")renderAllPicks(app);
   else if(tab==="rules")renderRules(app);
   else if(tab==="chat")renderChat(app);
-  else if(tab==="commish")renderCommish(app);
+  else if(tab==="commish")renderCommishTools(app);
   else renderSaturday(app);
 }
 
@@ -1313,7 +1346,7 @@ function fieldEl(g){
     <line x1="100" y1="0" x2="100" y2="${H}" stroke="#fff" stroke-width="5"/><line x1="${W-100}" y1="0" x2="${W-100}" y2="${H}" stroke="#fff" stroke-width="5"/>
     ${known?glowLine(bx,"#22D3EE"):""}${fd!=null?glowLine(fd,"#FFE135"):""}
     ${ball}</svg>`;
-  const wrap=el("div",{class:"field"});
+  const wrap=el("div",{class:"nflfield"});
   const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
   const ac=g.away_score??0,hc=g.home_score??0;
   wrap.append(el("div",{class:"fieldbar"},
@@ -1878,6 +1911,48 @@ function renderRules(v){
     el("p",{class:"meta",style:"margin:0 0 8px",text:"These update automatically when the commissioner changes the settings."}),list));
 }
 
+/* ---------- Commish Tools: dashboard + grouped sections ---------- */
+const COMM_SECTIONS=[
+  {key:"invite",icon:"💬",title:"Invite players",sub:"Text the join link or send email invites",match:["Text an invite","Or invite by email"]},
+  {key:"players",icon:"👥",title:"Players & strikes",sub:"Add or give back strikes, co-commissioners, remove players",match:["Players and strikes"]},
+  {key:"spectators",icon:"👀",title:"Spectators",sub:"Let people from your other pools follow along",match:["👀 Spectators"]},
+  {key:"settings",icon:"⚙️",title:"Pool settings",sub:"Lives, deadline, ties, season end and more",match:["Pool settings"]},
+  {key:"rules",icon:"📋",title:"Pool rules",sub:"House rules everyone sees on the Pool rules page",match:["Pool rules"]},
+  {key:"schedule",icon:"📅",title:"Schedule & games",sub:"Bye weeks and refreshing games",match:["Bye weeks","Games"]},
+  {key:"danger",icon:"⚠️",title:"End or delete pool",sub:"Finish the season early, or delete the pool",match:["End the pool","This pool has ended","Delete the pool"],danger:true}];
+function renderCommishTools(v){
+  const po=S.pool;S.commOpen=S.commOpen||{};
+  const tmp=el("div");renderCommish(tmp);
+  // Header with quick stats
+  const alive=S.standings.filter(r=>r.lives_left>0).length,total=S.standings.length;
+  const weeks=weekList(),d=weeks[S.weekIdx];
+  const picksIn=d?new Set(S.allPicks.filter(p=>p.game_date===d).map(p=>p.user_id)).size:0;
+  const aliveIds=new Set(S.standings.filter(r=>r.lives_left>0).map(r=>r.user_id));
+  const missing=d?[...aliveIds].filter(u=>!S.allPicks.some(p=>p.game_date===d&&p.user_id===u)).length:0;
+  const stat=(n,label,tone)=>el("div",{class:"cstat"+(tone?" "+tone:"")},el("b",{text:String(n)}),el("span",{text:label}));
+  const open=key=>{S.commOpen[key]=true;const det=v.querySelector(`[data-sec="${key}"]`);if(det){det.open=true;det.scrollIntoView({behavior:"smooth",block:"start"})}};
+  const quick=(icon,label,key)=>el("button",{class:"cquick",onclick:()=>open(key)},el("span",{class:"ci",text:icon}),el("span",{text:label}));
+  v.append(el("div",{class:"chero"},
+    el("div",{class:"chead"},el("div",{},el("div",{class:"ckicker",text:"Commish Tools"}),el("h2",{text:po.name}),
+      el("div",{class:"csub",text:`${po.sport==="nfl"?"NFL":"NHL"} · ${po.lives} ${po.lives===1?"life":"lives"} · ${po.ended_at?"Ended":d?slateTitle(d):"No games yet"}`})),
+      el("span",{class:"cbadge",text:isOwner()?"Commissioner":"Co-commissioner"})),
+    el("div",{class:"cstats"},stat(`${alive}/${total}`,"still alive"),stat(picksIn,`picked ${po.sport==="nfl"?"this week":"this Saturday"}`),
+      stat(missing,"haven’t picked",missing?"warn":""),stat((S.pending||[]).length,"invites pending")),
+    el("div",{class:"cquicks"},quick("💬","Invite","invite"),quick("👥","Players","players"),quick("⚙️","Settings","settings"),quick("📋","Rules","rules"))));
+  // Group the existing panels into sections
+  const panels=[...tmp.children];const used=new Set();
+  for(const sec of COMM_SECTIONS){
+    const mine=panels.filter(pn=>{const h=pn.querySelector&&pn.querySelector("h3");return h&&sec.match.includes(h.textContent.trim())});
+    if(!mine.length)continue;mine.forEach(x=>used.add(x));
+    const det=el("details",{class:"csec"+(sec.danger?" danger":""),"data-sec":sec.key});det.open=!!S.commOpen[sec.key];
+    det.addEventListener("toggle",()=>{S.commOpen[sec.key]=det.open});
+    det.append(el("summary",{},el("span",{class:"csi",text:sec.icon}),el("span",{class:"cst"},el("b",{text:sec.title}),el("small",{text:sec.sub})),el("span",{class:"chev","aria-hidden":"true",text:"›"})));
+    const body=el("div",{class:"csbody"});
+    for(const pn of mine){if(mine.length>1){const h=pn.querySelector("h3");if(h)h.classList.add("csubhead")}else{const h=pn.querySelector("h3");if(h)h.remove()}body.append(pn)}
+    det.append(body);v.append(det);
+  }
+  for(const pn of panels)if(!used.has(pn))v.append(pn);   // anything not grouped stays visible at the end
+}
 function renderCommish(v){
   const po=S.pool;
   const opt=(pairs,cur)=>pairs.map(([val,label])=>el("option",{value:val,selected:String(val)===String(cur),text:label}));
