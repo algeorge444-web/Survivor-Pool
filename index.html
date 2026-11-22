@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T19:45">
+<meta name="app-version" content="2026-11-22T20:00">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -811,6 +811,8 @@ function renderProfile(){
 async function loadHome(){
   const [inv,pools,me]=await Promise.all([sb.rpc("my_invites"),sb.from("pools").select("id,name,sport,friendly,ended_at,commissioner_id,co_commissioners,lives,max_picks_per_team").order("created_at"),
     sb.from("profiles").select("display_name,first_name,avatar,avatar_url").eq("id",uid()).maybeSingle()]);
+  const{data:spec}=await sb.from("pool_spectators").select("pool_id").eq("user_id",uid());
+  S.spectating=new Set((spec||[]).map(x=>x.pool_id));
   S.invites=inv.data||[];S.pools=pools.data||[];
   const pend=(S.session.user.user_metadata||{}).pending_pool;
   if(pend&&pend.name){
@@ -876,7 +878,7 @@ function renderHome(){
       el("div",{class:"acts",style:"justify-content:flex-end"},el("span",{class:"badge",text:SPORTS[p.sport||"nhl"].label}),
         p.ended_at?el("span",{class:"badge",text:"Final"}):null,
         p.friendly?el("span",{class:"badge friendly-b",text:"🏆 Friendly"}):null,
-        p.commissioner_id===uid()?el("span",{class:"badge",text:"Commissioner"}):(p.co_commissioners||[]).includes(uid())?el("span",{class:"badge",text:"Co-commissioner"}):null)));
+        (S.spectating&&S.spectating.has(p.id))?el("span",{class:"badge",text:"👀 Spectating"}):p.commissioner_id===uid()?el("span",{class:"badge",text:"Commissioner"}):(p.co_commissioners||[]).includes(uid())?el("span",{class:"badge",text:"Co-commissioner"}):null)));
   }
   const name=el("input",{type:"text",placeholder:"e.g. Sunday Survivors",maxlength:"60","aria-label":"Survivor pool name"});
   const sport=el("select",{"aria-label":"Sport"},el("option",{value:"nhl",text:"NHL · pick a team every Saturday"}),el("option",{value:"nfl",text:"NFL · pick a team every week"}));
@@ -919,7 +921,8 @@ async function loadPool(id,quiet){
   const weeks=weekList();
   if(!sameWeek||S.weekIdx<0||S.weekIdx>=weeks.length){const i=weeks.findIndex(d=>!weekDone(d)&&!(pool.bye_weeks||[]).includes(d));S.weekIdx=i===-1?weeks.length-1:i}
   S.loadedPool=id;
-  startChat(id);
+  S.spectator=!isC&&!S.standings.some(r=>r.user_id===uid());
+  if(!S.spectator)startChat(id);
 }
 const slateTitle=d=>{if(S.pool&&S.pool.sport==="nfl"){const g=S.games.find(x=>x.game_date===d);return `${(g&&g.week_label)||"Week"} · ${shortDate(d)}`}return fmtDate(d)};
 const endedDay=()=>S.pool&&S.pool.ended_at?new Date(S.pool.ended_at).toLocaleDateString("en-CA",{timeZone:"America/New_York"}):null;
@@ -931,6 +934,13 @@ async function refresh(){if(S.pool){await loadPool(S.pool.id,true);if(S.pool)ren
 
 /* ---------- Pool views ---------- */
 function renderPool(tab){
+  if(S.spectator){
+    if(!["standings","picks","rules"].includes(tab)){tab="standings";try{history.replaceState(null,"",`#pool/${S.pool.id}/standings`)}catch{}}
+    renderHeader([["standings","Standings"],["picks","All Picks"]]);
+    const app=$("app");app.replaceChildren(el("div",{class:"note",style:"margin-bottom:12px",text:"👀 You’re spectating this pool. You can follow the standings and everyone’s picks once they’re revealed, but you’re not playing in it."}));
+    if(tab==="picks")renderAllPicks(app);else if(tab==="rules")renderRules(app);else renderStandings(app);
+    return;
+  }
   const tabs=[["saturday","My Team"],["standings","Standings"],["picks","All Picks"],["chat","Chat"]];
   if(isCommish())tabs.push(["commish","Commish"]);
   if(tab==="commish"&&!isCommish())tab="saturday";
@@ -1420,10 +1430,11 @@ function renderStandings(v){
   v.append(el("div",{class:"tablewrap"},el("table",{},el("thead",{},el("tr",{},el("th",{text:"Player · picks"}),el("th",{text:"Lives"}))),tb)));
   v.append(el("p",{class:"meta",style:"margin-top:10px",text:`Other players’ picks show as “Picked” until then. ${revealText()}`}));
   if(!isCommish()){
-    const leave=el("button",{class:"sm danger",text:"Leave this pool"});
-    leave.onclick=async()=>{if(leave.dataset.armed!=="1"){leave.dataset.armed="1";leave.textContent="Tap again to leave";return}
-      const{error}=await sb.from("pool_members").delete().eq("pool_id",S.pool.id).eq("user_id",uid());
-      if(error)return toast(errText(error));toast("You left the pool");location.hash="#home"};
+    const sp=!!S.spectator;
+    const leave=el("button",{class:"sm danger",text:sp?"Stop spectating":"Leave this pool"});
+    leave.onclick=async()=>{if(leave.dataset.armed!=="1"){leave.dataset.armed="1";leave.textContent=sp?"Tap again to stop spectating":"Tap again to leave";return}
+      const{error}=await sb.from(sp?"pool_spectators":"pool_members").delete().eq("pool_id",S.pool.id).eq("user_id",uid());
+      if(error)return toast(errText(error));toast(sp?"You’re no longer spectating":"You left the pool");S.loadedPool=null;location.hash="#home"};
     v.append(el("div",{style:"margin-top:22px"},leave));
   }
 }
@@ -1682,6 +1693,27 @@ function renderCommish(v){
   v.append(el("div",{class:"panel"},el("h3",{text:"Pool rules"}),
     el("p",{class:"meta",style:"margin:0 0 10px",text:"Everyone in the pool sees these on the Rules tab, along with a summary of your settings."}),
     rules,el("div",{style:"margin-top:10px"},saveRules)));
+
+  // Spectators: people from your other pools who can watch this one
+  const specPanel=el("div",{class:"panel"},el("h3",{text:"👀 Spectators"}),
+    el("p",{class:"meta",style:"margin:0 0 10px",text:"Let people from your other pools follow this one. Spectators see Standings and All Picks (once picks are revealed). They can’t pick or chat."}));
+  const specList=el("div",{},el("p",{class:"meta",text:"Loading…"}));specPanel.append(specList);v.append(specPanel);
+  (async()=>{
+    const{data,error}=await sb.rpc("spectator_candidates",{p:po.id});
+    if(error){specList.replaceChildren(el("p",{class:"err",text:errText(error)}));return}
+    const rows=(data||[]).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!rows.length){specList.replaceChildren(el("p",{class:"meta",text:"Everyone from your other pools is already playing in this one."}));return}
+    const addAll=el("button",{class:"btn",style:"margin-bottom:10px",text:`Add everyone (${rows.filter(r=>!r.spectating).length})`});
+    addAll.disabled=rows.every(r=>r.spectating);
+    addAll.onclick=async()=>{addAll.disabled=true;
+      for(const r of rows.filter(r=>!r.spectating)){const{error}=await sb.rpc("set_spectator",{p:po.id,u:r.user_id,on_:true});if(error){toast(errText(error));break}}
+      toast("Spectators added");refresh()};
+    specList.replaceChildren(addAll,...rows.map(r=>{
+      const cb=el("input",{type:"checkbox"});cb.checked=r.spectating;
+      cb.onchange=async()=>{cb.disabled=true;const{error}=await sb.rpc("set_spectator",{p:po.id,u:r.user_id,on_:cb.checked});cb.disabled=false;
+        if(error){cb.checked=!cb.checked;return toast(errText(error))}toast(cb.checked?`${r.name} can spectate`:`${r.name} removed`)};
+      return el("label",{class:"remrow"},cb,el("span",{},el("strong",{text:r.name}),el("small",{class:"meta",text:`From ${r.from_pool}`})))}));
+  })();
 
   // Text an invite link
   const textPanel=el("div",{class:"panel"},el("h3",{text:"Text an invite"}),
