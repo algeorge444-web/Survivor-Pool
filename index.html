@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T22:35">
+<meta name="app-version" content="2026-11-22T22:45">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -333,12 +333,12 @@ tr.out td{opacity:.5}
 .fieldbar b{font-weight:800}
 .fieldbar .rz{margin-left:6px;background:#D7262E;color:#fff;font-weight:800;font-size:.68rem;padding:1px 6px;border-radius:9px}
 .lastplay{font-size:.78rem;color:#9FB2C8;margin-top:6px;line-height:1.35;padding:0 4px}
-.pickedtop{display:grid;gap:10px;margin:2px 14px 12px;padding:12px;border-radius:12px;background:linear-gradient(#1B2F55,#0F2244)}
-.ptrow{display:flex;align-items:flex-start;gap:10px}
+.pickedtop{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin:2px 14px 12px;padding:12px;border-radius:12px;background:linear-gradient(#1B2F55,#0F2244)}
+.ptrow{display:flex;align-items:flex-start;gap:10px;min-width:0}
 .ptteam{display:inline-flex;align-items:center;gap:6px;flex:none;color:#fff;font-weight:800;font-size:.9rem;padding:3px 11px 3px 3px;border-radius:999px;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .ptteam .logo{width:26px;height:26px;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box}
 .ptnames{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;align-items:center;min-width:0;flex:1}
-.ptname{font-weight:800;font-size:1.02rem;color:#fff;padding:4px 11px;border-radius:8px;border:0;border-left:4px solid;background:rgba(255,255,255,.1);line-height:1.25}
+.ptname{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;font-weight:800;font-size:1.02rem;color:#fff;padding:4px 11px;border-radius:8px;border:0;border-left:4px solid;background:rgba(255,255,255,.1);line-height:1.25}
 .ptname.you{background:linear-gradient(#F2C14E,#D9A332);color:#12263A;border-left-color:#fff}
 </style>
 </head>
@@ -989,9 +989,11 @@ function renderPool(tab){
     if(!["standings","picks","games","rules"].includes(tab)){tab="standings";try{history.replaceState(null,"",`#pool/${S.pool.id}/standings`)}catch{}}
     renderHeader([["standings","Standings"],["games","Games"],["picks","All Picks"]]);
     const app=$("app");app.replaceChildren(el("div",{class:"note",style:"margin-bottom:12px",text:"👀 You’re spectating this pool. Follow the standings, the live games people picked, and everyone’s picks once they’re revealed. You’re not playing in it."}));
+    requestAnimationFrame(()=>fitNames(app));
     if(tab==="picks"){renderWinner(app);renderAllPicks(app)}else if(tab==="games")renderSpectateGames(app);else if(tab==="rules")renderRules(app);else renderStandings(app);
     return;
   }
+  requestAnimationFrame(()=>fitNames($("app")));
   const tabs=[["saturday","My Team"],["standings","Standings"],["picks","All Picks"],["chat","Chat"]];
   if(isCommish())tabs.push(["commish","Commish"]);
   if(tab==="commish"&&!isCommish())tab="saturday";
@@ -1315,6 +1317,14 @@ function lighten(hex){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h
   const c=[1,2,3].map(i=>parseInt(m[i],16));const l=(.299*c[0]+.587*c[1]+.114*c[2]);const k=l<110?(110-l)/110*.75+.25:0;
   return "#"+c.map(v=>Math.round(v+(255-v)*k).toString(16).padStart(2,"0")).join("")}
 
+// Shrink each name tag's text until it fits on one line (down to a readable minimum).
+function fitNames(root){
+  for(const n of root.querySelectorAll(".ptname")){
+    n.style.fontSize="";let size=parseFloat(getComputedStyle(n).fontSize);const min=11;
+    while(n.scrollWidth>n.clientWidth+1&&size>min){size-=.5;n.style.fontSize=size+"px"}
+  }
+}
+addEventListener("resize",()=>{const a=document.getElementById("app");if(a)fitNames(a)});
 // "Who picked" tags shown at the top of a game card: bold names on a tint of the team's colour.
 function pickedTop(g,pickersOf){
   const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
