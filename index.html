@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T22:10">
+<meta name="app-version" content="2026-11-22T22:25">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -333,6 +333,13 @@ tr.out td{opacity:.5}
 .fieldbar b{font-weight:800}
 .fieldbar .rz{margin-left:6px;background:#D7262E;color:#fff;font-weight:800;font-size:.68rem;padding:1px 6px;border-radius:9px}
 .lastplay{font-size:.78rem;color:#9FB2C8;margin-top:6px;line-height:1.35;padding:0 4px}
+.pickedtop{display:grid;gap:8px;margin:2px 14px 10px;padding:10px;border-radius:10px;background:#FFF8E1;border:1.5px solid #F2C14E}
+.ptrow{display:flex;align-items:flex-start;gap:8px}
+.ptteam{display:inline-flex;align-items:center;gap:5px;flex:none;color:#fff;font-weight:800;font-size:.8rem;padding:3px 9px 3px 3px;border-radius:999px;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.ptteam .logo{width:22px;height:22px;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box}
+.ptnames{display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;align-items:center;min-width:0;flex:1}
+.ptname{font-weight:800;font-size:.88rem;color:#12263A;padding:3px 9px;border-radius:8px;border:1.5px solid;line-height:1.2}
+.ptname.you{background:#12263A;color:#fff;border-color:#12263A}
 </style>
 </head>
 <body>
@@ -1072,6 +1079,7 @@ function renderSaturday(v){
     const card=el("div",{class:"game"+(myPick&&(g.away===myPick||g.home===myPick)?" has-pick":"")});
     const right=g.status==="postponed"?el("span",{class:"score",text:"Postponed"}):g.status==="final"?el("span",{class:"score",text:`Final ${g.away_score}–${g.home_score}${g.winner==="TIE"?" · tie":""}`}):g.status==="live"?el("span",{class:"score live"},el("span",{class:"livedot","aria-hidden":"true"}),`Live ${g.away_score??0}–${g.home_score??0}`,g.clock?el("small",{class:"clock",text:g.clock}):null):el("span",{text:S.pool.sport==="nfl"?new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"}):fmtTime(g.start_time)});
     card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
+    if(typeof pickersOf==="function"&&(typeof revealed==="undefined"||revealed)){const pt=pickedTop(g,pickersOf);if(pt)card.append(pt)}
     const sides=el("div",{class:"sides"});
     const wp=winPcts(g);
     for(const [team,pct,cls] of [[g.away,wp&&wp.away,"away"],[g.home,wp&&wp.home,"home"]]){
@@ -1108,10 +1116,6 @@ function renderSaturday(v){
         el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})));
     }
     if(S.pool.sport==="nfl"&&g.status==="live"&&g.situation)card.append(fieldEl(g));
-    if(revealed){
-      const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
-      if(who.length)card.append(el("div",{class:"pickedby"},...who.map(([t,n])=>el("div",{},teamLogo(t,true),el("span",{},el("b",{text:`${t}: `}),n.join(", "))))));
-    }
     const notes=matchupNotes(g);if(notes)card.append(notes);
     v.append(card);
   }
@@ -1311,6 +1315,16 @@ function lighten(hex){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(h
   const c=[1,2,3].map(i=>parseInt(m[i],16));const l=(.299*c[0]+.587*c[1]+.114*c[2]);const k=l<110?(110-l)/110*.75+.25:0;
   return "#"+c.map(v=>Math.round(v+(255-v)*k).toString(16).padStart(2,"0")).join("")}
 
+// "Who picked" tags shown at the top of a game card: bold names on a tint of the team's colour.
+function pickedTop(g,pickersOf){
+  const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
+  if(!who.length)return null;
+  return el("div",{class:"pickedtop"},...who.map(([t,n])=>{
+    const c=teamColor(t);
+    return el("div",{class:"ptrow"},el("span",{class:"ptteam",style:`background:${c}`},teamLogo(t,true),t),
+      el("div",{class:"ptnames"},...n.map(name=>{const me=name==="You";
+        return el("span",{class:"ptname"+(me?" you":""),style:me?"":`border-color:${c};background:${c}1f`,text:name})})))}));
+}
 // Spectators: this week's games that players picked, with live scores, clock and (NFL) the field.
 function renderSpectateGames(v){
   const weeks=weekList();
@@ -1337,6 +1351,7 @@ function renderSpectateGames(v){
       :g.status==="live"?el("span",{class:"score live"},el("span",{class:"livedot","aria-hidden":"true"}),`Live ${g.away_score??0}–${g.home_score??0}`,g.clock?el("small",{class:"clock",text:g.clock}):null)
       :el("span",{class:"score",text:new Date(g.start_time).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})});
     card.append(el("div",{class:"top"},el("span",{text:"Away @ Home"}),right));
+    if(typeof pickersOf==="function"&&(typeof revealed==="undefined"||revealed)){const pt=pickedTop(g,pickersOf);if(pt)card.append(pt)}
     const sides=el("div",{class:"sides"});const wp=winPcts(g);
     for(const [team,pct,cls] of [[g.away,wp&&wp.away,"away"],[g.home,wp&&wp.home,"home"]]){
       const n=pickersOf(team).length;
@@ -1350,8 +1365,6 @@ function renderSpectateGames(v){
     if(wp){const t=wp.away+wp.home||100;card.append(el("div",{class:"bar","aria-hidden":"true"},
       el("span",{style:`width:${wp.away/t*100}%;background:${teamColor(g.away)}`}),el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})))}
     if(S.pool.sport==="nfl"&&g.status==="live"&&g.situation)card.append(fieldEl(g));
-    const who=[[g.away,pickersOf(g.away)],[g.home,pickersOf(g.home)]].filter(([,n])=>n.length);
-    card.append(el("div",{class:"pickedby"},...who.map(([t,n])=>el("div",{},teamLogo(t,true),el("span",{},el("b",{text:`${t}: `}),n.join(", "))))));
     v.append(card);
   }
 }
