@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-22T22:25">
+<meta name="app-version" content="2026-11-22T22:35">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -333,13 +333,13 @@ tr.out td{opacity:.5}
 .fieldbar b{font-weight:800}
 .fieldbar .rz{margin-left:6px;background:#D7262E;color:#fff;font-weight:800;font-size:.68rem;padding:1px 6px;border-radius:9px}
 .lastplay{font-size:.78rem;color:#9FB2C8;margin-top:6px;line-height:1.35;padding:0 4px}
-.pickedtop{display:grid;gap:8px;margin:2px 14px 10px;padding:10px;border-radius:10px;background:#FFF8E1;border:1.5px solid #F2C14E}
-.ptrow{display:flex;align-items:flex-start;gap:8px}
-.ptteam{display:inline-flex;align-items:center;gap:5px;flex:none;color:#fff;font-weight:800;font-size:.8rem;padding:3px 9px 3px 3px;border-radius:999px;text-shadow:0 1px 1px rgba(0,0,0,.35)}
-.ptteam .logo{width:22px;height:22px;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box}
-.ptnames{display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;align-items:center;min-width:0;flex:1}
-.ptname{font-weight:800;font-size:.88rem;color:#12263A;padding:3px 9px;border-radius:8px;border:1.5px solid;line-height:1.2}
-.ptname.you{background:#12263A;color:#fff;border-color:#12263A}
+.pickedtop{display:grid;gap:10px;margin:2px 14px 12px;padding:12px;border-radius:12px;background:linear-gradient(#1B2F55,#0F2244)}
+.ptrow{display:flex;align-items:flex-start;gap:10px}
+.ptteam{display:inline-flex;align-items:center;gap:6px;flex:none;color:#fff;font-weight:800;font-size:.9rem;padding:3px 11px 3px 3px;border-radius:999px;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.ptteam .logo{width:26px;height:26px;background:#fff;border-radius:50%;padding:2px;box-sizing:border-box}
+.ptnames{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;align-items:center;min-width:0;flex:1}
+.ptname{font-weight:800;font-size:1.02rem;color:#fff;padding:4px 11px;border-radius:8px;border:0;border-left:4px solid;background:rgba(255,255,255,.1);line-height:1.25}
+.ptname.you{background:linear-gradient(#F2C14E,#D9A332);color:#12263A;border-left-color:#fff}
 </style>
 </head>
 <body>
@@ -1323,7 +1323,7 @@ function pickedTop(g,pickersOf){
     const c=teamColor(t);
     return el("div",{class:"ptrow"},el("span",{class:"ptteam",style:`background:${c}`},teamLogo(t,true),t),
       el("div",{class:"ptnames"},...n.map(name=>{const me=name==="You";
-        return el("span",{class:"ptname"+(me?" you":""),style:me?"":`border-color:${c};background:${c}1f`,text:name})})))}));
+        return el("span",{class:"ptname"+(me?" you":""),style:me?"":`border-left-color:${lighten(c)}`,text:name})})))}));
 }
 // Spectators: this week's games that players picked, with live scores, clock and (NFL) the field.
 function renderSpectateGames(v){
