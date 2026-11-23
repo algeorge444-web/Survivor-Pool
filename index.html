@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T01:25">
+<meta name="app-version" content="2026-11-23T01:35">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -348,7 +348,14 @@ tr.out td{opacity:.5}
 .gstat.live{background:#FDECEC;color:#B3161E}
 .gstat.final{background:#12263A;color:#fff}
 .side .abbr{white-space:nowrap}
-.side{flex-wrap:wrap}.side .tagrow{flex-basis:100%;text-align:center;margin-top:-2px}.side .tagrow .tag{margin-top:0}
+.side{flex-wrap:wrap}.side .tagrow{flex-basis:100%;text-align:center;margin-top:-2px}.side .tagrow .tag{margin-top:0;text-align:center;white-space:nowrap}
+.side .tag.result{display:inline-flex;align-items:center;gap:7px;padding:4px 5px 4px 6px;font-family:'Saira Condensed','Arial Narrow',sans-serif;font-size:.95rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;line-height:1}
+.side .tag.result .rmark{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#fff;font-size:.8rem;font-weight:900}
+.side .tag.result b{font-weight:800;padding:3px 9px;border-radius:99px;background:rgba(0,0,0,.22);letter-spacing:.1em}
+.side.won .tag.result{background:linear-gradient(180deg,#2a9d5c,#1c7a45);box-shadow:0 2px 8px rgba(28,122,69,.35)}
+.side.won .tag.result .rmark{color:#1c7a45}
+.side.lost .tag.result{background:linear-gradient(180deg,#d33a4a,#a91d2d);box-shadow:0 2px 8px rgba(169,29,45,.35)}
+.side.lost .tag.result .rmark{color:#a91d2d}
 .tscore{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:800;color:#8C98A6;display:inline-block;padding:0 7px;border-radius:7px;background:#EEF2F6}
 .tscore.lead{color:#fff;background:#12263A}
 .tscore.live.lead{background:#B3161E}
@@ -1185,7 +1192,7 @@ function renderSaturday(v){
         el("div",{class:"info"},
           abbrScore(g,team,cls),el("span",{class:"name",text:teamName(team)}),
           el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% ${wp.est?"est.":"to win"}`:"Odds soon"})),
-        tag?el("div",{class:"tagrow"},el("span",{class:"tag",text:tag})):null);
+        tag?el("div",{class:"tagrow"},res?el("span",{class:"tag result"},el("span",{class:"rmark",text:res===" won"?"✓":"✕"}),el("span",{text:"Your pick"}),el("b",{text:res===" won"?"WON":"LOST"})):el("span",{class:"tag",text:tag})):null);
       b.disabled=!canTap;
       if(canTap)b.onclick=async()=>{
         b.disabled=true;
