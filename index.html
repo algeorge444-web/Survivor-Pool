@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T00:20">
+<meta name="app-version" content="2026-11-23T00:40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -399,7 +399,7 @@ tr.out td{opacity:.5}
 .fieldbar .yourpick{margin-left:8px;background:rgba(242,193,78,.18);color:#F2C14E;border:1px solid rgba(242,193,78,.6);font-weight:800;font-size:.68rem;padding:1px 7px;border-radius:5px;letter-spacing:.03em}
 .rinkline{margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.06);font-size:.82rem}
 .rinkline.pp{color:#F2C14E;font-weight:700}
-.rinkpen{font-size:.8rem;color:#FFB4B4;margin-top:6px;padding:0 4px}
+.rinkpen{margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(200,16,46,.18);color:#FFC9C9;font-size:.82rem;font-weight:700}
 </style>
 </head>
 <body>
@@ -1401,14 +1401,10 @@ function rinkEl(g){
     <text x="${x0+(P-4)/2}" y="${Wd-4}" font-size="5.5" font-weight="800" fill="#fff" fill-opacity=".85" text-anchor="middle" font-family="Arial,sans-serif">${t}</text></g>`;
   let puck="";
   if(known){const px=X(sit.x),py=Yc(sit.y);
-    const lab=owner?`${owner} ATTACKING`:"";
-    const lx=Math.max(P+18,Math.min(P+L-18,px-dir*4)),ly=py>18?py-9:py+13;
-    puck=`<g>${dir?`<path d="M${px-dir*14} ${py}h${dir*9}" stroke="#7A8796" stroke-opacity=".45" stroke-width="2.4" stroke-linecap="round"/>`:""}
+    puck=`<g><circle cx="${px}" cy="${py}" r="6" fill="#F2C14E" fill-opacity=".35"/>
       <ellipse cx="${px}" cy="${py+.9}" rx="3.1" ry="1.5" fill="#000" fill-opacity=".25"/>
-      <ellipse cx="${px}" cy="${py}" rx="3" ry="2.1" fill="#111"/><ellipse cx="${px-.6}" cy="${py-.6}" rx="1.4" ry=".7" fill="#555"/>
-      ${dir?`<path d="M${px+dir*5} ${py}h${dir*13}" stroke="#F2C14E" stroke-width="1.6" stroke-linecap="round" filter="url(#gl${id})"/><path d="M${px+dir*14} ${py-3.2}L${px+dir*18.5} ${py} ${px+dir*14} ${py+3.2}" fill="none" stroke="#F2C14E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`:""}
-      ${lab?`<g transform="translate(${lx} ${ly})"><rect x="-17" y="-4.2" width="34" height="8.4" rx="2.5" fill="#fff" stroke="#C9D3DC" stroke-width=".4"/><text x="0" y=".3" font-size="4.6" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#12263A" font-family="Arial,sans-serif">${lab}</text></g>`:""}</g>`}
-  const svg=`<svg viewBox="-2 -2 ${W+4} ${Wd+4}" role="img" aria-label="${owner?owner+" attacking":"Live rink"}">
+      <ellipse cx="${px}" cy="${py}" rx="3" ry="2.1" fill="#111"/><ellipse cx="${px-.6}" cy="${py-.6}" rx="1.4" ry=".7" fill="#555"/></g>`}
+  const svg=`<svg viewBox="-2 -2 ${W+4} ${Wd+4}" role="img" aria-label="Where the puck is">
     <defs><filter id="gl${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
       <linearGradient id="ice${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E6EEF5"/></linearGradient>
       <linearGradient id="psh${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".2"/><stop offset=".5" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>
@@ -1430,17 +1426,9 @@ function rinkEl(g){
   const wrap=el("div",{class:"nflfield rinkwrap"});
   const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg rinksvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
   const ca=teamColor(g.away),ch=teamColor(g.home);
-  const wk=g.game_date,mine=(S.myPicks||[]).find(p=>p.game_date===wk&&(p.team===g.away||p.team===g.home));
-  wrap.append(el("div",{class:"fieldbar"},
-    el("span",{},"SCORE: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${g.away_score??0}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${g.home_score??0}`}),
-      mine?el("span",{class:"yourpick",text:`YOUR PICK: ${mine.team}`}):null),
-    g.clock?el("span",{text:g.clock.toUpperCase()}):null));
-  const zone=!owner||!sit.zone?null:sit.zone==="N"?"Puck in neutral zone":sit.zone==="O"?`Puck in ${owner===g.home?g.away:g.home} zone`:`Puck in ${owner} zone`;
-  const sog=sit.sog&&sit.sog.a!=null?`Shots: ${g.away} ${sit.sog.a} | ${g.home} ${sit.sog.h}`:null;
-  const line=[sit.str||"Even strength",zone,sog].filter(Boolean).join(" · ");
-  wrap.append(el("div",{class:"rinkline"+(sit.str&&/power play/i.test(sit.str)?" pp":""),text:line}));
+  if(sit.sog&&sit.sog.a!=null)wrap.append(el("div",{class:"fieldbar"},
+    el("span",{},"SHOTS ON NET: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${sit.sog.a}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${sit.sog.h}`}))));
   if(sit.pen)wrap.append(el("div",{class:"rinkpen",text:`Penalty: ${sit.pen}`}));
-  if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
   return wrap;
 }
 // Brighter version of a team colour, readable on navy.
