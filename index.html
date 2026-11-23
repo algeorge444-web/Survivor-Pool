@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T01:00">
+<meta name="app-version" content="2026-11-23T01:15">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -408,6 +408,17 @@ tr.out td{opacity:.5}
 .rinkpen{display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;border-radius:10px;background:linear-gradient(90deg,rgba(200,16,46,.45),rgba(200,16,46,.12));border:1px solid rgba(255,80,80,.5)}
 .pentag{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-style:italic;font-size:.85rem;letter-spacing:.12em;color:#fff;background:#C8102E;padding:3px 8px;border-radius:5px;box-shadow:0 0 10px rgba(255,40,60,.7);animation:penpulse 1.6s ease-in-out infinite}
 .penwho b{font-size:1.05rem;font-weight:800;white-space:nowrap}.penwho small{font-size:.8rem;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.downboard{display:flex;align-items:stretch;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,#05101d,#0b1b2e);border:1px solid rgba(242,193,78,.35);box-shadow:inset 0 0 18px rgba(0,0,0,.6),0 0 12px rgba(242,193,78,.12)}
+.dbposs{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:44px}
+.dbposs .sbteam{color:var(--tc);font-size:1.25rem;line-height:1}
+.dbball{font-size:1rem;filter:drop-shadow(0 0 4px rgba(255,200,80,.6))}
+.dbbox{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dblab{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-style:italic;font-size:.68rem;letter-spacing:.14em;color:#cfd8e3;white-space:nowrap}
+.downboard .sbnum{font-size:1.45rem;padding:4px 8px}
+.downboard .sbnum.spot{font-size:1.05rem;padding:7px 8px;white-space:nowrap}
+.downboard .sbnum.goal{color:#FF5A5A;text-shadow:0 0 6px rgba(255,60,60,.9),0 0 14px rgba(255,0,0,.4)}
+.lastplay.pbp{display:flex;gap:8px;align-items:baseline;margin-top:8px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.05);border-left:3px solid #F2C14E;color:#DCE5EF;font-size:.82rem}
+.pbptag{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-style:italic;font-size:.72rem;letter-spacing:.12em;color:#F2C14E;white-space:nowrap}
 @keyframes penpulse{50%{box-shadow:0 0 2px rgba(255,40,60,.2)}}
 @media (prefers-reduced-motion:reduce){.pentag{animation:none}}
 .penwho{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:700;font-size:1rem;letter-spacing:.04em;text-transform:uppercase;color:#FFE1E1}
@@ -1377,12 +1388,18 @@ function fieldEl(g){
     ${ball}</svg>`;
   const wrap=el("div",{class:"nflfield"});
   const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
-  const ac=g.away_score??0,hc=g.home_score??0;
-  wrap.append(el("div",{class:"fieldbar"},
-    el("span",{},"SCORE: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${ac}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${hc}`})),
-    g.clock?el("span",{text:g.clock.toUpperCase()}):null,
-    el("span",{},sit.poss?el("b",{text:`${sit.poss} ball · `}):"",[sit.down,sit.spot?`at ${sit.spot}`:""].filter(Boolean).join(" ")||"—",sit.rz?el("span",{class:"rz",text:"RED ZONE"}):null)));
-  if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
+  const dm=/^\s*(\d)(?:st|nd|rd|th)?\s*&\s*(\w+)/i.exec(sit.down||"");
+  if(sit.poss||dm){
+    const pc=sit.poss===g.away?ca:sit.poss===g.home?ch:"#ffffff";
+    const box=(lab,val,cls="")=>el("div",{class:"dbbox"},el("span",{class:"dblab",text:lab}),el("span",{class:"sbnum "+cls,text:val}));
+    wrap.append(el("div",{class:"downboard"},
+      sit.poss?el("div",{class:"dbposs",style:`--tc:${lighten(pc)}`},el("span",{class:"dbball",text:"🏈"}),el("span",{class:"sbteam",text:sit.poss})):null,
+      dm?box("DOWN",dm[1]):null,
+      dm?box("TO GO",/goal/i.test(dm[2])?"G":dm[2],/goal/i.test(dm[2])?"goal":""):null,
+      sit.spot?box("BALL ON",sit.spot.replace(/^50$/,"MID"),"spot"):null));
+  }
+  if(sit.rz)wrap.append(el("div",{class:"rinkpen rzbar"},el("span",{class:"pentag",text:"RED ZONE"}),el("span",{class:"penwho"},el("b",{text:`${sit.poss||""} inside the 20`}),el("small",{text:sit.down||""}))));
+  if(sit.last)wrap.append(el("div",{class:"lastplay pbp"},el("span",{class:"pbptag",text:"LAST PLAY"}),el("span",{text:sit.last})));
   return wrap;
 }
 // Live NHL game: the rink with the puck's last spot, who's attacking, and the game situation.
