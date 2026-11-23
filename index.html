@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T02:00">
+<meta name="app-version" content="2026-11-23T02:10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2361,7 +2361,11 @@ if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.service
     }
   }
   route();
-  setInterval(()=>{const r=parseRoute();if(document.visibilityState==="visible"&&S.session&&r.view==="pool"&&r.tab!=="commish"&&r.tab!=="chat")refresh()},60000);
+  let tick=0;
+  setInterval(()=>{tick++;const r=parseRoute();
+    // Every 30 seconds while a game is live, otherwise once a minute.
+    const live=(S.games||[]).some(g=>g.status==="live");
+    if((live||tick%2===0)&&document.visibilityState==="visible"&&S.session&&r.view==="pool"&&r.tab!=="commish"&&r.tab!=="chat")refresh()},30000);
 })();
 </script>
 </body>
