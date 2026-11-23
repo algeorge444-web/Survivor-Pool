@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T01:15">
+<meta name="app-version" content="2026-11-23T01:25">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -348,6 +348,7 @@ tr.out td{opacity:.5}
 .gstat.live{background:#FDECEC;color:#B3161E}
 .gstat.final{background:#12263A;color:#fff}
 .side .abbr{white-space:nowrap}
+.side{flex-wrap:wrap}.side .tagrow{flex-basis:100%;text-align:center;margin-top:-2px}.side .tagrow .tag{margin-top:0}
 .tscore{font-family:"Saira Condensed","Arial Narrow",sans-serif;font-weight:800;color:#8C98A6;display:inline-block;padding:0 7px;border-radius:7px;background:#EEF2F6}
 .tscore.lead{color:#fff;background:#12263A}
 .tscore.live.lead{background:#B3161E}
@@ -1183,8 +1184,8 @@ function renderSaturday(v){
         teamLogo(team),
         el("div",{class:"info"},
           abbrScore(g,team,cls),el("span",{class:"name",text:teamName(team)}),
-          el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% ${wp.est?"est.":"to win"}`:"Odds soon"}),
-          tag?el("div",{},el("span",{class:"tag",text:tag})):null));
+          el("span",{class:"pct",text:pct!=null?`${Math.round(pct)}% ${wp.est?"est.":"to win"}`:"Odds soon"})),
+        tag?el("div",{class:"tagrow"},el("span",{class:"tag",text:tag})):null);
       b.disabled=!canTap;
       if(canTap)b.onclick=async()=>{
         b.disabled=true;
