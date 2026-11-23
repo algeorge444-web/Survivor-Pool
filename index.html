@@ -22,14 +22,14 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T00:40">
+<meta name="app-version" content="2026-11-23T01:00">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pwa-add-to-homescreen@4.6.0/dist/add-to-homescreen.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Orbitron:wght@700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --ice:#EEF3F6;--surface:#FFFFFF;--boards:#12263A;--ink:#12263A;--muted:#5B6B7A;
@@ -399,7 +399,19 @@ tr.out td{opacity:.5}
 .fieldbar .yourpick{margin-left:8px;background:rgba(242,193,78,.18);color:#F2C14E;border:1px solid rgba(242,193,78,.6);font-weight:800;font-size:.68rem;padding:1px 7px;border-radius:5px;letter-spacing:.03em}
 .rinkline{margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.06);font-size:.82rem}
 .rinkline.pp{color:#F2C14E;font-weight:700}
-.rinkpen{margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(200,16,46,.18);color:#FFC9C9;font-size:.82rem;font-weight:700}
+.rinkshots{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:8px;padding:8px 14px;border-radius:10px;background:linear-gradient(180deg,#05101d,#0b1b2e);border:1px solid rgba(242,193,78,.35);box-shadow:inset 0 0 18px rgba(0,0,0,.6),0 0 12px rgba(242,193,78,.12)}
+.sbside{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.sbside:last-child{justify-content:flex-end;flex-direction:row-reverse}
+.sbteam{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:.06em;color:var(--tc)}
+.sbnum{font-family:'Orbitron',monospace;font-weight:900;font-size:1.7rem;line-height:1;color:#FFD95A;text-shadow:0 0 6px rgba(255,200,40,.85),0 0 16px rgba(255,170,0,.45);background:#000;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,217,90,.25);min-width:2.2ch;text-align:center}
+.sblabel{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-style:italic;font-size:.78rem;line-height:1.05;letter-spacing:.14em;text-align:center;color:#cfd8e3}
+.rinkpen{display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;border-radius:10px;background:linear-gradient(90deg,rgba(200,16,46,.45),rgba(200,16,46,.12));border:1px solid rgba(255,80,80,.5)}
+.pentag{font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:800;font-style:italic;font-size:.85rem;letter-spacing:.12em;color:#fff;background:#C8102E;padding:3px 8px;border-radius:5px;box-shadow:0 0 10px rgba(255,40,60,.7);animation:penpulse 1.6s ease-in-out infinite}
+.penwho b{font-size:1.05rem;font-weight:800;white-space:nowrap}.penwho small{font-size:.8rem;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes penpulse{50%{box-shadow:0 0 2px rgba(255,40,60,.2)}}
+@media (prefers-reduced-motion:reduce){.pentag{animation:none}}
+.penwho{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;font-family:'Saira Condensed','Arial Narrow',sans-serif;font-weight:700;font-size:1rem;letter-spacing:.04em;text-transform:uppercase;color:#FFE1E1}
+.pentime{font-family:'Orbitron',monospace;font-weight:900;font-size:1.2rem;color:#FF5A5A;text-shadow:0 0 6px rgba(255,60,60,.9),0 0 14px rgba(255,0,0,.4);background:#000;padding:3px 7px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -1426,9 +1438,15 @@ function rinkEl(g){
   const wrap=el("div",{class:"nflfield rinkwrap"});
   const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg rinksvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
   const ca=teamColor(g.away),ch=teamColor(g.home);
-  if(sit.sog&&sit.sog.a!=null)wrap.append(el("div",{class:"fieldbar"},
-    el("span",{},"SHOTS ON NET: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${sit.sog.a}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${sit.sog.h}`}))));
-  if(sit.pen)wrap.append(el("div",{class:"rinkpen",text:`Penalty: ${sit.pen}`}));
+  if(sit.sog&&sit.sog.a!=null){
+    const side=(t,n,c)=>el("div",{class:"sbside",style:`--tc:${lighten(c)}`},el("span",{class:"sbteam",text:t}),el("span",{class:"sbnum",text:String(n)}));
+    wrap.append(el("div",{class:"rinkshots"},side(g.away,sit.sog.a,ca),el("div",{class:"sblabel"},"SHOTS",el("br"),"ON NET"),side(g.home,sit.sog.h,ch)));
+  }
+  if(sit.pen){
+    const parts=sit.pen.split(" · ");const left=/left$/.test(parts[parts.length-1])?parts.pop().replace(/ left$/,""):null;
+    wrap.append(el("div",{class:"rinkpen"},el("span",{class:"pentag",text:"PENALTY"}),
+      el("span",{class:"penwho"},el("b",{text:parts[0]||""}),parts.length>1?el("small",{text:parts.slice(1).join(" · ")}):null),left?el("span",{class:"pentime",text:left}):null));
+  }
   return wrap;
 }
 // Brighter version of a team colour, readable on navy.
