@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#12263A">
 <meta name="apple-mobile-web-app-title" content="Survivor Pool">
 <meta name="application-name" content="Survivor Pool">
-<meta name="app-version" content="2026-11-23T00:05">
+<meta name="app-version" content="2026-11-23T00:20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -395,6 +395,11 @@ tr.out td{opacity:.5}
 .pfteam.sel{border-color:var(--blue);background:#E8F0FB}
 .pfteam.arm{border-color:#F2C14E;background:#FFF6DC}
 .pfteam.used{opacity:.4;cursor:default}
+.rinksvg{transform:rotateX(20deg)}
+.fieldbar .yourpick{margin-left:8px;background:rgba(242,193,78,.18);color:#F2C14E;border:1px solid rgba(242,193,78,.6);font-weight:800;font-size:.68rem;padding:1px 7px;border-radius:5px;letter-spacing:.03em}
+.rinkline{margin-top:6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.06);font-size:.82rem}
+.rinkline.pp{color:#F2C14E;font-weight:700}
+.rinkpen{font-size:.8rem;color:#FFB4B4;margin-top:6px;padding:0 4px}
 </style>
 </head>
 <body>
@@ -1173,7 +1178,7 @@ function renderSaturday(v){
         el("span",{style:`width:${wp.away/t*100}%;background:${teamColor(g.away)}`}),
         el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})));
     }
-    if(S.pool.sport==="nfl"&&g.status==="live"&&g.situation)card.append(fieldEl(g));
+    if(g.status==="live"&&g.situation)card.append(S.pool.sport==="nfl"?fieldEl(g):rinkEl(g));
     const notes=matchupNotes(g);if(notes)card.append(notes);
     v.append(card);
   }
@@ -1368,6 +1373,76 @@ function fieldEl(g){
   if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
   return wrap;
 }
+// Live NHL game: the rink with the puck's last spot, who's attacking, and the game situation.
+// NHL coordinates: x -100..100 (left to right), y -42.5..42.5. homeSide = end the home team defends.
+const NHL_NICK={TOR:"MAPLE LEAFS",DET:"RED WINGS",CBJ:"BLUE JACKETS",VGK:"GOLDEN KNIGHTS"};
+function rinkEl(g){
+  const sit=g.situation||{};const id="r"+String(g.id).replace(/\W/g,"");
+  const P=24,L=200,Wd=85,W=L+2*P;               // team panels either side of the rink
+  const homeLeft=sit.homeSide==="left";
+  const leftT=homeLeft?g.home:g.away,rightT=homeLeft?g.away:g.home;
+  const X=x=>P+100+x,Yc=y=>42.5-y;
+  const nick=t=>NHL_NICK[t]||((teamName(t)||t).split(" ").pop()||t).toUpperCase();
+  const cl=teamColor(leftT),cr=teamColor(rightT);
+  const known=typeof sit.x==="number"&&typeof sit.y==="number";
+  const owner=sit.owner;
+  const ownerLeft=owner?(owner===leftT):null;                 // owner defends the left end, so attacks right
+  const dir=owner?(ownerLeft?1:-1):0;
+  const circ=(cx,cy,r,c,w=.6)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="${w}"/>`;
+  const dot=(cx,cy,r=1)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#C8102E"/>`;
+  const fo=(x,y)=>{const cx=X(x),cy=Yc(y);return circ(cx,cy,15,"#C8102E")+dot(cx,cy,1)+
+    `<path d="M${cx-6} ${cy-2}h4M${cx+2} ${cy-2}h4M${cx-6} ${cy+2}h4M${cx+2} ${cy+2}h4M${cx-2} ${cy-5}v3M${cx+2} ${cy-5}v3M${cx-2} ${cy+2}v3M${cx+2} ${cy+2}v3" stroke="#C8102E" stroke-width=".5"/>`};
+  const crease=(side)=>{const gx=X(side*89);return `<path d="M${gx} ${Yc(4)} A6 6 0 0 ${side<0?1:0} ${gx} ${Yc(-4)} Z" fill="#9ED3F5" fill-opacity=".75" stroke="#C8102E" stroke-width=".5"/>
+    <rect x="${side<0?gx-4:gx}" y="${Yc(3)}" width="4" height="6" rx="1.2" fill="#E9EDF1" stroke="#8B97A3" stroke-width=".5"/>`};
+  const panel=(x0,t,c,rot)=>`<g><rect x="${x0}" y="0" width="${P-4}" height="${Wd}" rx="6" fill="${c}"/>
+    <rect x="${x0}" y="0" width="${P-4}" height="${Wd}" rx="6" fill="url(#psh${id})"/>
+    <text x="${x0+(P-4)/2}" y="${Wd/2}" font-size="${nick(t).length>9?8.5:10.5}" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="central" letter-spacing=".6" transform="rotate(${rot} ${x0+(P-4)/2} ${Wd/2})" font-family="'Saira Condensed','Arial Narrow',Arial,sans-serif">${nick(t)}</text>
+    <text x="${x0+(P-4)/2}" y="8" font-size="5.5" font-weight="800" fill="#fff" fill-opacity=".85" text-anchor="middle" font-family="Arial,sans-serif">${t}</text>
+    <text x="${x0+(P-4)/2}" y="${Wd-4}" font-size="5.5" font-weight="800" fill="#fff" fill-opacity=".85" text-anchor="middle" font-family="Arial,sans-serif">${t}</text></g>`;
+  let puck="";
+  if(known){const px=X(sit.x),py=Yc(sit.y);
+    const lab=owner?`${owner} ATTACKING`:"";
+    const lx=Math.max(P+18,Math.min(P+L-18,px-dir*4)),ly=py>18?py-9:py+13;
+    puck=`<g>${dir?`<path d="M${px-dir*14} ${py}h${dir*9}" stroke="#7A8796" stroke-opacity=".45" stroke-width="2.4" stroke-linecap="round"/>`:""}
+      <ellipse cx="${px}" cy="${py+.9}" rx="3.1" ry="1.5" fill="#000" fill-opacity=".25"/>
+      <ellipse cx="${px}" cy="${py}" rx="3" ry="2.1" fill="#111"/><ellipse cx="${px-.6}" cy="${py-.6}" rx="1.4" ry=".7" fill="#555"/>
+      ${dir?`<path d="M${px+dir*5} ${py}h${dir*13}" stroke="#F2C14E" stroke-width="1.6" stroke-linecap="round" filter="url(#gl${id})"/><path d="M${px+dir*14} ${py-3.2}L${px+dir*18.5} ${py} ${px+dir*14} ${py+3.2}" fill="none" stroke="#F2C14E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`:""}
+      ${lab?`<g transform="translate(${lx} ${ly})"><rect x="-17" y="-4.2" width="34" height="8.4" rx="2.5" fill="#fff" stroke="#C9D3DC" stroke-width=".4"/><text x="0" y=".3" font-size="4.6" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#12263A" font-family="Arial,sans-serif">${lab}</text></g>`:""}</g>`}
+  const svg=`<svg viewBox="-2 -2 ${W+4} ${Wd+4}" role="img" aria-label="${owner?owner+" attacking":"Live rink"}">
+    <defs><filter id="gl${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1"/></filter>
+      <linearGradient id="ice${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E6EEF5"/></linearGradient>
+      <linearGradient id="psh${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".2"/><stop offset=".5" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>
+      <clipPath id="rc${id}"><rect x="${P}" y="0" width="${L}" height="${Wd}" rx="28"/></clipPath></defs>
+    ${panel(0,leftT,cl,-90)}${panel(W-P+4,rightT,cr,90)}
+    <rect x="${P}" y="0" width="${L}" height="${Wd}" rx="28" fill="url(#ice${id})"/>
+    <g clip-path="url(#rc${id})">
+      <line x1="${X(-89)}" y1="0" x2="${X(-89)}" y2="${Wd}" stroke="#C8102E" stroke-width=".6"/><line x1="${X(89)}" y1="0" x2="${X(89)}" y2="${Wd}" stroke="#C8102E" stroke-width=".6"/>
+      <rect x="${X(-25)-1}" y="0" width="2" height="${Wd}" fill="#1F4FA0"/><rect x="${X(25)-1}" y="0" width="2" height="${Wd}" fill="#1F4FA0"/>
+      <rect x="${X(0)-1}" y="0" width="2" height="${Wd}" fill="#C8102E"/>
+      <line x1="${X(0)}" y1="0" x2="${X(0)}" y2="${Wd}" stroke="#fff" stroke-width=".7" stroke-dasharray="2 2.4"/>
+      ${circ(X(0),Yc(0),15,"#1F4FA0",.7)}${`<circle cx="${X(0)}" cy="${Yc(0)}" r="1" fill="#1F4FA0"/>`}
+      ${fo(-69,22)}${fo(-69,-22)}${fo(69,22)}${fo(69,-22)}
+      ${dot(X(-20),Yc(22))}${dot(X(-20),Yc(-22))}${dot(X(20),Yc(22))}${dot(X(20),Yc(-22))}
+      ${crease(-1)}${crease(1)}
+      ${puck}
+    </g>
+    <rect x="${P}" y="0" width="${L}" height="${Wd}" rx="28" fill="none" stroke="#B8C4D0" stroke-width="1.6"/></svg>`;
+  const wrap=el("div",{class:"nflfield rinkwrap"});
+  const stage=el("div",{class:"fieldstage"});const pic=el("div",{class:"fieldsvg rinksvg"});pic.innerHTML=svg;stage.append(pic);wrap.append(stage);
+  const ca=teamColor(g.away),ch=teamColor(g.home);
+  const wk=g.game_date,mine=(S.myPicks||[]).find(p=>p.game_date===wk&&(p.team===g.away||p.team===g.home));
+  wrap.append(el("div",{class:"fieldbar"},
+    el("span",{},"SCORE: ",el("b",{style:`color:${lighten(ca)}`,text:`${g.away} ${g.away_score??0}`})," | ",el("b",{style:`color:${lighten(ch)}`,text:`${g.home} ${g.home_score??0}`}),
+      mine?el("span",{class:"yourpick",text:`YOUR PICK: ${mine.team}`}):null),
+    g.clock?el("span",{text:g.clock.toUpperCase()}):null));
+  const zone=!owner||!sit.zone?null:sit.zone==="N"?"Puck in neutral zone":sit.zone==="O"?`Puck in ${owner===g.home?g.away:g.home} zone`:`Puck in ${owner} zone`;
+  const sog=sit.sog&&sit.sog.a!=null?`Shots: ${g.away} ${sit.sog.a} | ${g.home} ${sit.sog.h}`:null;
+  const line=[sit.str||"Even strength",zone,sog].filter(Boolean).join(" · ");
+  wrap.append(el("div",{class:"rinkline"+(sit.str&&/power play/i.test(sit.str)?" pp":""),text:line}));
+  if(sit.pen)wrap.append(el("div",{class:"rinkpen",text:`Penalty: ${sit.pen}`}));
+  if(sit.last)wrap.append(el("div",{class:"lastplay",text:sit.last}));
+  return wrap;
+}
 // Brighter version of a team colour, readable on navy.
 function lighten(hex){const m=/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex||"");if(!m)return"#fff";
   const c=[1,2,3].map(i=>parseInt(m[i],16));const l=(.299*c[0]+.587*c[1]+.114*c[2]);const k=l<110?(110-l)/110*.75+.25:0;
@@ -1451,7 +1526,7 @@ function renderSpectateGames(v){
     card.append(sides);
     if(wp){const t=wp.away+wp.home||100;card.append(el("div",{class:"bar","aria-hidden":"true"},
       el("span",{style:`width:${wp.away/t*100}%;background:${teamColor(g.away)}`}),el("span",{style:`width:${wp.home/t*100}%;background:${teamColor(g.home)}`})))}
-    if(S.pool.sport==="nfl"&&g.status==="live"&&g.situation)card.append(fieldEl(g));
+    if(g.status==="live"&&g.situation)card.append(S.pool.sport==="nfl"?fieldEl(g):rinkEl(g));
     v.append(card);
   }
 }
